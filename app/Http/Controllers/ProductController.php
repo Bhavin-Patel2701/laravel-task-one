@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Models\Product;
@@ -17,7 +18,13 @@ class ProductController extends Controller
     public function index()
     {
         $allproduct_entries = Product::select('product.*','category.title as category_title')
-        ->leftJoin('category','category.id','=','product.category_id')->get();
+        ->leftJoin('category','category.id','=','product.category_id')
+        ->get();
+        
+        /* $all = Product::with('category')->get();
+        foreach ($all as $a){
+            dd($a->category->title);
+        } */
 
         return view('product.index', compact('allproduct_entries'));
     }
@@ -74,7 +81,7 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $rules = [
-            'category_id' => 'required',
+            'category_id' => 'required|exists:category,id',
             'title' => 'required|string|min:2|max:255',
             'status' => 'required|in:active,inactive',
             'quantity' => 'required|numeric|between:1,100',
@@ -89,6 +96,10 @@ class ProductController extends Controller
 
         if ($request->filled('description')) {
             $rules['description'] = 'required|string|min:2';
+        }
+
+        if ($request->filled('child_category_id')) {
+            $rules['child_category_id'] = 'required|exists:category,id';
         }
 
         if ($request->file('image')) {
@@ -106,6 +117,8 @@ class ProductController extends Controller
         }
 
         Product::create($data);
+
+        Session::flash('success', 'New Product created successfully.');
 
         return redirect()->route('product.list');
     }
@@ -200,6 +213,9 @@ class ProductController extends Controller
         }
 
         $singale_info->save();
+
+        Session::flash('success', 'Product details update successfully.');
+
         return redirect()->route('product.list');
     }
 
@@ -220,7 +236,30 @@ class ProductController extends Controller
             $singale_info->save();
         }
 
+        Session::flash('success', 'Product image delete successfully.');
+
         return redirect()->route('product.list');
+    }
+
+    public function status($id)
+    {
+        $singale_info = Product::findOrFail($id);
+        $singale_info->status = $singale_info->status === 'active' ? 'inactive' : 'active';
+        $singale_info->save();
+
+        return response()->json(['status' => $singale_info->status]);
+    }
+
+    public function childcategory(Request $request)
+    {
+        $category_id = $request->input('category_id');
+
+        $child_category = Category::where('status', 'active')
+        ->where('parent_id', $category_id)->get();
+
+        // dd($child_category);
+
+        return response()->json(['status' => $child_category]);
     }
     
     /**
@@ -233,6 +272,9 @@ class ProductController extends Controller
     {
         $data = Product::findOrFail($id);
         $data->delete();
+
+        Session::flash('success', 'Product move to trash successfully.');
+
         return redirect()->route('product.list');
     }
 }

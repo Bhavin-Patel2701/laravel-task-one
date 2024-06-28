@@ -29,7 +29,7 @@
                         <p>Dashboard</p>
                     </a>
                 </li>
-                <li class="nav-header">EXAMPLES</li>
+                <!-- <li class="nav-header">EXAMPLES</li> -->
                 <li class="nav-item">
                     <a href="{{ route('users.list') }}" class="{{ request()->segment(1) == 'users' ? 'active' : '' }} nav-link">
                         <i class="nav-icon far fa-user"></i>
@@ -37,15 +37,28 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="{{ route('category.list') }}" class="{{ request()->segment(1) == 'category' ? 'active' : '' }} nav-link">
                         <i class="nav-icon far fa-file"></i>
                         <p>Categories</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="{{ route('product.list') }}" class="{{ request()->segment(1) == 'product' ? 'active' : '' }} nav-link">
                         <i class="nav-icon fas fa-shopping-bag"></i>
                         <p>Products</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('brand.list') }}" class="{{ request()->segment(1) == 'brand' ? 'active' : '' }} nav-link">
+                        <i class="nav-icon fas fa-archive"></i>
+                        <p>Brands</p>
+                    </a>
+                </li>
+                <!-- <li class="nav-header">LABELS</li> -->
+                <li class="nav-item">
+                    <a href="{{ url('trash') }}" class="{{ request()->segment(1) == 'trash' ? 'active' : '' }} nav-link">
+                        <i class="nav-icon fa fa-trash text-danger"></i>
+                        <p class="text text-danger">Trash</p>
                     </a>
                 </li>
             </ul>

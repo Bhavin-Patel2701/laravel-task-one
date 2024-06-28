@@ -1,6 +1,6 @@
 @extends('layouts.newstyle')
 
-@section('title', 'Users List')
+@section('title', 'Brands List')
 
 @section('content')
 
@@ -9,12 +9,12 @@
     <div class="container-fluid">
         <div class="row mb-2">
             <div class="col-sm-6">
-                <h1>Users List</h1>
+                <h1>Brands List</h1>
             </div>
             <div class="col-sm-6">
                 <ol class="breadcrumb float-sm-right">
                     <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                    <li class="breadcrumb-item active">Users List</li>
+                    <li class="breadcrumb-item active">Brands List</li>
                 </ol>
             </div>
         </div>
@@ -41,44 +41,58 @@
                             </div>
                         @endif
 
-                        <div class="mb-3" style="text-align: end;">
-                            <a href="{{ route('users.create') }}" class="btn btn-primary btn-block d-inline"><i class="fa fa-plus"></i> Add User</a>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <form action="{{ route('brand.list') }}" method="GET">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group d-flex align-items-end">
+                                                <label for="search" class="mr-2">Search:</label>
+
+                                                <input type="text" class="form-control" placeholder="{{ __('Search...') }}" id="search" name="search" value="{{ $search }}">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <button type="submit" class="btn btn-primary">Search</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="col-md-6" style="text-align: end;">
+                                <a href="{{ route('brand.create') }}">
+                                    <button class="btn btn-primary">
+                                        <i class="fa fa-plus"></i> Add Brand
+                                    </button>
+                                </a>
+                            </div>
                         </div>
 
-                        <table id="example1" class="table table-bordered table-striped">
+                        <table class="table table-bordered table-striped">
                             <thead>
                                 <tr>
                                     <th>Sr. No.</th>
-                                    <th>First Name</th>
-                                    <th>Last Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Email Status</th>
+                                    <th>Brand Name</th>
+                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @php
-                                    $entriesID = 1;
+                                    $entriesID = ($allbrand_entries->currentPage() - 1) * $allbrand_entries->perPage() + 1;
                                 @endphp
-                                @foreach ($all_entries as $entries)
+                                @foreach ($allbrand_entries as $entries)
                                     <tr>
                                         <th>{{ $entriesID++ }}.</th>
-                                        <td>{{ $entries->firstname }}</td>
-                                        <td>{{ $entries->lastname }}</td>
-                                        <td>{{ $entries->email }}</td>
-                                        <td>{{ ucwords(strtolower($entries->role)) }}</td>
+                                        <td>{{ $entries->title }}</td>
                                         <td>
-                                            @if(!empty($entries->email_verified_at))
-                                                <span class="badge badge-success">Verified</span>
-                                            @else
-                                                <span class="badge badge-danger">Not Verified</span>
-                                            @endif
+                                            <span id="status-{{ $entries->id }}" class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }} toggle-status" data-id="{{ $entries->id }}" style="cursor: pointer;">{{ $entries->status }}</span>
                                         </td>
                                         <td>
-                                            <a href="{{ route('users.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
-                                            <a href="{{ route('users.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
-                                            <a href="{{ route('users.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this User ?');">Move to Trash</a>
+                                            <a href="{{ route('brand.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
+                                            <a href="{{ route('brand.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
+                                            <a href="{{ route('brand.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this Brand ?');">Move to Trash</a>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -86,15 +100,16 @@
                             <tfoot>
                                 <tr>
                                     <th>Sr. No.</th>
-                                    <th>First Name</th>
-                                    <th>Last Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Email Status</th>
+                                    <th>Brand Name</th>
+                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </tfoot>
                         </table>
+
+                        <div class="mt-4">
+                            {{ $allbrand_entries->appends(['search' => request()->input('search')])->links('vendor.pagination.bootstrap-4') }}
+                        </div>
                     </div>
                     <!-- /.card-body -->
                 </div>
@@ -145,23 +160,30 @@
 
 <!-- Page specific script -->
 <script>
-    $(function () {
-        $("#example1").DataTable({
-            "responsive": true,
-            "lengthChange": true,
-            "autoWidth": true,
-            "paging": true,
-            "searching": true,
-            "ordering": true,
-            "info": true,
-            // "buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
-        }).buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
-    });
-
     $(document).ready(function() {
         setTimeout(function() {
             $('.alert-success').fadeOut('slow');
         }, 2500);
+
+        $('.toggle-status').on('click', function() {
+            var id = $(this).data('id');
+
+            $.ajax({
+                url: "{{ route('brand.status', '') }}/"+id,
+                type: 'GET',
+                data: { _token: "{{ csrf_token() }}" },
+                success: function(response) {
+                    var status_badge = $('#status-' + id);
+                    status_badge.text(response.status);
+
+                    if(response.status === 'active') {
+                        status_badge.removeClass('badge-danger').addClass('badge-success');
+                    } else {
+                        status_badge.removeClass('badge-success').addClass('badge-danger');
+                    }
+                }
+            });
+        });
     });
 </script>
 <!-- /.Page specific script -->

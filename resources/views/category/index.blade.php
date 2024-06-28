@@ -1,6 +1,6 @@
 @extends('layouts.newstyle')
 
-@section('title', 'Users List')
+@section('title', 'Category List')
 
 @section('content')
 
@@ -9,12 +9,12 @@
     <div class="container-fluid">
         <div class="row mb-2">
             <div class="col-sm-6">
-                <h1>Users List</h1>
+                <h1>Category List</h1>
             </div>
             <div class="col-sm-6">
                 <ol class="breadcrumb float-sm-right">
                     <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-                    <li class="breadcrumb-item active">Users List</li>
+                    <li class="breadcrumb-item active">Category List</li>
                 </ol>
             </div>
         </div>
@@ -42,18 +42,16 @@
                         @endif
 
                         <div class="mb-3" style="text-align: end;">
-                            <a href="{{ route('users.create') }}" class="btn btn-primary btn-block d-inline"><i class="fa fa-plus"></i> Add User</a>
+                            <a href="{{ route('category.create') }}" class="btn btn-primary btn-block d-inline"><i class="fa fa-plus"></i> Add Category</a>
                         </div>
 
                         <table id="example1" class="table table-bordered table-striped">
                             <thead>
                                 <tr>
                                     <th>Sr. No.</th>
-                                    <th>First Name</th>
-                                    <th>Last Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Email Status</th>
+                                    <th>Parent Category</th>
+                                    <th>Category Name</th>
+                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -64,21 +62,21 @@
                                 @foreach ($all_entries as $entries)
                                     <tr>
                                         <th>{{ $entriesID++ }}.</th>
-                                        <td>{{ $entries->firstname }}</td>
-                                        <td>{{ $entries->lastname }}</td>
-                                        <td>{{ $entries->email }}</td>
-                                        <td>{{ ucwords(strtolower($entries->role)) }}</td>
+
+                                        @if (!empty($entries->parent_category))
+                                            <td>{{ $entries->parent_category }}</td>
+                                        @else
+                                            <td class="text-danger">No Parent Category</td>
+                                        @endif
+
+                                        <td>{{ $entries->title }}</td>
                                         <td>
-                                            @if(!empty($entries->email_verified_at))
-                                                <span class="badge badge-success">Verified</span>
-                                            @else
-                                                <span class="badge badge-danger">Not Verified</span>
-                                            @endif
+                                            <span id="status-{{ $entries->id }}" class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }} toggle-status" data-id="{{ $entries->id }}" style="cursor: pointer;">{{ $entries->status }}</span>
                                         </td>
                                         <td>
-                                            <a href="{{ route('users.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
-                                            <a href="{{ route('users.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
-                                            <a href="{{ route('users.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this User ?');">Move to Trash</a>
+                                            <a href="{{ route('category.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
+                                            <a href="{{ route('category.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
+                                            <a href="{{ route('category.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this Category ?');">Move to Trash</a>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -86,11 +84,9 @@
                             <tfoot>
                                 <tr>
                                     <th>Sr. No.</th>
-                                    <th>First Name</th>
-                                    <th>Last Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Email Status</th>
+                                    <th>Parent Category</th>
+                                    <th>Category Name</th>
+                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </tfoot>
@@ -107,37 +103,6 @@
     <!-- /.container-fluid -->
 </section>
 <!-- /.content -->
-
-@php /*
-    <!-- Button to trigger modal -->
-    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
-        Launch Modal
-    </button>
-    <!-- /.Button to trigger modal -->
-
-    <!-- Modal -->
-    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!-- Modal body content goes here -->
-                    This is a popup modal example in AdminLTE 3.
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary">Save changes</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- /.Modal -->
-*/ @endphp
 
 @endsection
 
@@ -162,6 +127,26 @@
         setTimeout(function() {
             $('.alert-success').fadeOut('slow');
         }, 2500);
+
+        $('.toggle-status').on('click', function() {
+            var id = $(this).data('id');
+
+            $.ajax({
+                url: "{{ route('category.status', '') }}/"+id,
+                type: 'GET',
+                data: { _token: "{{ csrf_token() }}" },
+                success: function(response) {
+                    var status_badge = $('#status-' + id);
+                    status_badge.text(response.status);
+
+                    if(response.status === 'active') {
+                        status_badge.removeClass('badge-danger').addClass('badge-success');
+                    } else {
+                        status_badge.removeClass('badge-success').addClass('badge-danger');
+                    }
+                }
+            });
+        });
     });
 </script>
 <!-- /.Page specific script -->

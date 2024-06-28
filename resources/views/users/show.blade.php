@@ -31,11 +31,6 @@
             <div class="col-md-12">
                 <!-- general form elements -->
                 <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">Quick Example</h3>
-                    </div>
-                    <!-- /.card-header -->
-
                     <!-- form start -->
                     <div class="card-body">
                         <div class="row">
@@ -47,6 +42,10 @@
                                 <div class="form-group">
                                     <label>Email Address</label>
                                     <input type="text" class="form-control" value="{{ $singale_entry->email }}" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <input type="text" class="form-control" value="{{ ucwords(strtolower($singale_entry->role)) }}" readonly>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -63,6 +62,13 @@
                                         style="color: red;"
                                     @endif>
                                 </div>
+                                <div class="form-group">
+                                    <label>Mobile Number</label>
+                                    <input type="text" class="form-control" value="@if(!empty($singale_entry->mobile_number)) $singale_entry->mobile_number @else Not Entered Mobile Number @endif" readonly
+                                    @if(empty($singale_entry->mobile_number))
+                                        style="color: red;"
+                                    @endif>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -70,7 +76,7 @@
                     <!-- /.card-body -->
                     <div class="card-footer">
                         <a href="{{ route('users.list') }}" class="btn btn-primary">Back To List</a>
-                        <a href="" class="btn btn-primary">Edit This Record</a>
+                        <a href="{{ route('users.edit', $singale_entry->id) }}" class="btn btn-primary">Edit This Record</a>
                     </div>
                 </div>
                 <!-- /.card -->

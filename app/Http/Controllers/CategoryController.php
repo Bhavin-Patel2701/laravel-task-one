@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Session;
 use Illuminate\Http\Request;
 use App\Models\Category;
+use App\Models\Product;
 
 class CategoryController extends Controller
 {
@@ -14,7 +16,9 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $all_entries = Category::all();
+        $all_entries = Category::select('category.*', 'parent.title as parent_category')
+        ->leftJoin('category as parent', 'category.parent_id', '=', 'parent.id')->get();
+
         return view('category.index', compact('all_entries'));
     }
 
@@ -25,9 +29,14 @@ class CategoryController extends Controller
      */
     public function trashrecord()
     {
-        $all_entries = Category::all();
-        $trash_category = Category::onlyTrashed()->get();
-        return view('trash', compact('trash_category', 'all_entries'));
+        // $trash_category = Category::select('category.*', 'parent.title as parent_category')
+        // ->leftJoin('category as parent', 'category.parent_id', '=', 'parent.id')
+        // ->onlyTrashed()->get();
+
+        $category = Category::select('category.*', 'parent.title as parent_category')
+        ->leftJoin('category as parent', 'category.parent_id', '=', 'parent.id')->get();
+
+        return view('trash', compact('category'));
     }
 
     public function restore($id)
@@ -64,13 +73,18 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $rules = [
-            'parent_id' => '',
             'title' => 'required|string|min:2|max:50',
             'status' => 'required|in:active,inactive'  // Validation rule for enum
         ];
 
+        if ($request->filled('parent_id')) {
+            $rules['parent_id'] = 'required|exists:category,id';
+        }
+
         $data = $request->validate($rules);
         Category::create($data);
+
+        Session::flash('success', 'New Category created successfully.');
 
         return redirect()->route('category.list');
     }
@@ -83,14 +97,11 @@ class CategoryController extends Controller
      */
     public function show($id)
     {
-        $singale_entry = Category::findOrFail($id);
-        $parent_category_name = null;
+        $singale_entry = Category::select('category.*', 'parent.title as parent_category')
+        ->leftJoin('category as parent', 'category.parent_id', '=', 'parent.id')
+        ->where('category.id', $id)->first();
 
-        if (!empty($singale_entry->parent_id)) {
-            $parent_category_name = Category::where('id', $singale_entry->parent_id)->first();
-        }
-
-        return view('category.show', compact('singale_entry', 'parent_category_name'));
+        return view('category.show', compact('singale_entry'));
     }
 
     /**
@@ -101,8 +112,9 @@ class CategoryController extends Controller
      */
     public function edit($id)
     {
-        $all_entries = Category::all();
         $singale_entry = Category::findOrFail($id);
+        $all_entries = Category::where('id', '!=', $id)->where('status', 'active')->get();
+
         return view('category.edit', compact('singale_entry', 'all_entries'));
     }
 
@@ -116,21 +128,74 @@ class CategoryController extends Controller
     public function update(Request $request, $id)
     {
         $rules = [
-            'parent_id' => '',
             'title' => 'required|string|min:2|max:50',
             'status' => 'required|in:active,inactive',
         ];
 
+        if ($request->filled('parent_id')) {
+            if ($request->input('parent_id') === "remove") {
+                $rules['parent_id'] = 'required';
+            } else {
+                $rules['parent_id'] = 'required|exists:category,id';
+            }
+        }
+
         $data = $request->validate($rules);
+
+        if ($data['status'] === "inactive") {
+            $child_category = Category::where('parent_id', $id)->get();
+            
+            foreach ($child_category as $category)
+            {
+                $category->status = "inactive";
+                $category->save();
+            }
+
+            $product_category = Product::where('category_id', $id)->get();
+            
+            foreach ($product_category as $product_cat)
+            {
+                $product_cat->category_id = null;
+                $product_cat->status = "inactive";
+                $product_cat->save();
+            }
+        }
 
         $singale_info = Category::findOrFail($id);
 
-        $singale_info->parent_id = $data['parent_id'];
+        if ($request->input('parent_id') === "remove") {
+            $singale_info->parent_id = null;
+        } elseif ($request->filled('parent_id')) {
+            $singale_info->parent_id = $data['parent_id'];
+        }
+
         $singale_info->title = $data['title'];
         $singale_info->status = $data['status'];
-
         $singale_info->save();
+
+        Session::flash('success', 'Category details update successfully.');
+
         return redirect()->route('category.list');
+    }
+
+    public function status($id)
+    {
+        $singale_info = Category::findOrFail($id);
+        $singale_info->status = $singale_info->status === 'active' ? 'inactive' : 'active';
+
+        if ($singale_info->status === "inactive") {
+            $product_category = Product::where('category_id', $id)->get();
+
+            foreach ($product_category as $product_cat)
+            {
+                $product_cat->category_id = null;
+                $product_cat->status = "inactive";
+                $product_cat->save();
+            }
+        }
+        $singale_info->save();
+
+        return response()->json(['status' => $singale_info->status]);
     }
 
     /**
@@ -141,8 +206,20 @@ class CategoryController extends Controller
      */
     public function destroy($id)
     {
+        $child_category = Category::where('parent_id', $id)->get();
+
+        foreach ($child_category as $category)
+        {
+            $category->parent_id = null;
+            $category->status = "inactive";
+            $category->save();
+        }
+
         $data = Category::findOrFail($id);
         $data->delete();
+
+        Session::flash('success', 'Category move to trash successfully.');
+
         return redirect()->route('category.list');
     }
 }
