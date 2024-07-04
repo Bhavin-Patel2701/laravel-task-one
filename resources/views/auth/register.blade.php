@@ -84,6 +84,22 @@
             </div>
         </div>
 
+        <div class="input-group mb-3">
+            <input id="mobile_number" type="text" class="form-control @error('mobile_number') is-invalid @enderror" name="mobile_number" value="{{ old('mobile_number') }}" placeholder="{{ __('Mobile Number') }}" autocomplete="mobile_number">
+
+            <div class="input-group-append">
+                <div class="input-group-text">
+                    <span class="fas fa-phone"></span>
+                </div>
+            </div>
+
+            @error('mobile_number')
+                <span class="invalid-feedback" role="alert">
+                    <strong>{{ $message }}</strong>
+                </span>
+            @enderror
+        </div>
+
         <div class="row">
             <div class="col-8">
                 <div class="icheck-primary">

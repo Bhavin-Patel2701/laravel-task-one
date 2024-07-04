@@ -13,7 +13,7 @@
             </div>
             <div class="col-sm-6">
                 <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
                     <li class="breadcrumb-item active">Product List</li>
                 </ol>
             </div>
@@ -41,8 +41,29 @@
                             </div>
                         @endif
 
-                        <div class="mb-3" style="text-align: end;">
-                            <a href="{{ route('product.create') }}" class="btn btn-primary btn-block d-inline"><i class="fa fa-plus"></i> Add Product</a>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <a href="{{ route('product.export') }}">
+                                    <button class="btn btn-secondary">
+                                        <i class="fa fa-download"></i> Export Data
+                                    </button>
+                                </a>
+                                <button class="btn btn-info" data-toggle="modal" data-target="#exampleModal">
+                                    <i class="fa fa-plus"></i> Import Data
+                                </button>
+                                <a href="{{ asset('storage/download/importproducts.csv') }}" download>
+                                    <button class="btn btn-success">
+                                        <i class="fa fa-upload"></i> Demo File
+                                    </button>
+                                </a>
+                            </div>
+                            <div class="col-md-6" style="text-align: end;">
+                                <a href="{{ route('product.create') }}">
+                                    <button class="btn btn-primary">
+                                        <i class="fa fa-plus"></i> Add Product
+                                    </button>
+                                </a>
+                            </div>
                         </div>
 
                         <table id="example1" class="table table-bordered table-striped">
@@ -112,6 +133,50 @@
     <!-- /.container-fluid -->
 </section>
 <!-- /.content -->
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Import Product Data</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Modal body content goes here -->
+                <form action="{{ route('product.import') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="csv_file">Import Product File</label>
+
+                                <input type="file" class="form-control @error('csv_file') is-invalid @enderror" name="csv_file" id="csv_file" accept=".csv, application/vnd.ms-excel, text/plain" />
+
+                                @error('csv_file')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Submit</button>
+
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <!-- <button type="button" class="btn btn-primary">Save changes</button> -->
+            </div>
+        </div>
+    </div>
+</div>
+<!-- /.Modal -->
 
 @endsection
 

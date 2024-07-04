@@ -13,7 +13,7 @@
             </div>
             <div class="col-sm-6">
                 <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
                     <li class="breadcrumb-item active">Users List</li>
                 </ol>
             </div>
@@ -41,8 +41,14 @@
                             </div>
                         @endif
 
-                        <div class="mb-3" style="text-align: end;">
-                            <a href="{{ route('users.create') }}" class="btn btn-primary btn-block d-inline"><i class="fa fa-plus"></i> Add User</a>
+                        <div class="row mb-3" style="text-align: end;">
+                            <div class="col-md-12">
+                                <a href="{{ route('users.create') }}">
+                                    <button class="btn btn-primary">
+                                        <i class="fa fa-plus"></i> Add User
+                                    </button>
+                                </a>
+                            </div>
                         </div>
 
                         <table id="example1" class="table table-bordered table-striped">

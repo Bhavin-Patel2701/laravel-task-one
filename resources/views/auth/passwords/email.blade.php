@@ -48,7 +48,7 @@
             <p class="mb-1"><a href="{{ route('login') }}">I already have a membership</a></p>
         @endif
     @else
-        <p class="mb-1"><a href="{{ route('home') }}">Go To Home</a></p>
+        <p class="mb-1"><a href="{{ url('/') }}">Go To Home</a></p>
     @endguest
 
 </div>

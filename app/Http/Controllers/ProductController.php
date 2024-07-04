@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ProductExport;
+use App\Imports\ProductImport;
 use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Models\Product;
@@ -257,9 +260,27 @@ class ProductController extends Controller
         $child_category = Category::where('status', 'active')
         ->where('parent_id', $category_id)->get();
 
-        // dd($child_category);
-
         return response()->json(['status' => $child_category]);
+    }
+
+    public function export(Request $request)
+    {
+        return Excel::download(new ProductExport, 'products.csv');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'csv_file' => 'required|mimes:csv,txt|max:2048'
+        ]);
+
+        $data = $request->file('csv_file');
+
+        Excel::import(new ProductImport, $data);
+
+        Session::flash('success', 'All Products are import successfully.');
+
+        return redirect()->route('product.list');
     }
     
     /**

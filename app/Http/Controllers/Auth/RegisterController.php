@@ -50,10 +50,21 @@ class RegisterController extends Controller
     protected function validator(array $data)
     {
         return Validator::make($data, [
-            'firstname' => ['required', 'string', 'max:255'],
-            'lastname' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'firstname' => ['required', 'alpha', 'min:2', 'max:255'],
+            'lastname' => ['required', 'alpha', 'min:2', 'max:255'],
+            'email' => [
+                'required', 'string', 'email', 'min:5', 'max:255', 'unique:users',
+                'regex:/^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,5}$/'
+            ],
+            'password' => [
+                'required', 'string', 'min:8', 'confirmed',
+                'regex:/[a-z]/', 'regex:/[A-Z]/', 'regex:/[0-9]/', 'regex:/[@$!%*#?&]/'
+            ],
+            'mobile_number' => ['string', 'size:10', 'regex:/^[0-9]{10}$/']
+        ], [
+            'password.regex' => 'The password must include at least one lowercase letter, one uppercase letter, one number, and one special character.',
+            'mobile_number.size' => 'The mobile number must be exactly 10 digits.',
+            'mobile_number.regex' => 'The mobile number must contain only digits.'
         ]);
     }
 
@@ -70,6 +81,7 @@ class RegisterController extends Controller
             'lastname' => $data['lastname'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'mobile_number' => $data['mobile_number']
         ]);
     }
 }
