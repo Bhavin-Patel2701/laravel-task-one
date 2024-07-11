@@ -40,6 +40,18 @@
                                 </button>
                             </div>
                         @endif
+                        
+                        @if(Session::has('error'))
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                {{ Session::get('error') }}
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        @endif
+
+                        <div id="status_error">
+                        </div>
 
                         <div class="row">
                             <div class="col-md-6">
@@ -75,7 +87,10 @@
                                     <th>Sr. No.</th>
                                     <th>Brand Name</th>
                                     <th>Status</th>
-                                    <th>Action</th>
+
+                                    @if (Auth::user()->role === "admin")
+                                        <th>Action</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -86,14 +101,24 @@
                                     <tr>
                                         <th>{{ $entriesID++ }}.</th>
                                         <td>{{ $entries->title }}</td>
-                                        <td>
-                                            <span id="status-{{ $entries->id }}" class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }} toggle-status" data-id="{{ $entries->id }}" style="cursor: pointer;">{{ $entries->status }}</span>
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('brand.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
-                                            <a href="{{ route('brand.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
-                                            <a href="{{ route('brand.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this Brand ?');">Move to Trash</a>
-                                        </td>
+
+                                        @if (Auth::user()->role !== "admin")
+                                            <td>
+                                                <span class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }}">{{ $entries->status }}</span>
+                                            </td>
+                                        @else
+                                            <td>
+                                                <span id="status-{{ $entries->id }}" class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }} toggle-status" data-id="{{ $entries->id }}" style="cursor: pointer;">{{ $entries->status }}</span>
+                                            </td>
+                                        @endif
+
+                                        @if (Auth::user()->role === "admin")
+                                            <td>
+                                                <a href="{{ route('brand.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
+                                                <a href="{{ route('brand.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
+                                                <a href="{{ route('brand.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this Brand ?');">Move to Trash</a>
+                                            </td>
+                                        @endif
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -102,7 +127,10 @@
                                     <th>Sr. No.</th>
                                     <th>Brand Name</th>
                                     <th>Status</th>
-                                    <th>Action</th>
+
+                                    @if (Auth::user()->role === "admin")
+                                        <th>Action</th>
+                                    @endif
                                 </tr>
                             </tfoot>
                         </table>
@@ -162,7 +190,7 @@
 <script>
     $(document).ready(function() {
         setTimeout(function() {
-            $('.alert-success').fadeOut('slow');
+            $('.alert-success, .alert-danger').fadeOut('slow');
         }, 2500);
 
         $('.toggle-status').on('click', function() {
@@ -180,6 +208,18 @@
                         status_badge.removeClass('badge-danger').addClass('badge-success');
                     } else {
                         status_badge.removeClass('badge-success').addClass('badge-danger');
+                    }
+                },
+                error: function(xhr) {
+                    if (xhr.status === 403) {
+                        let response = xhr.responseJSON;
+                        if (response.error) {
+                            html = '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+response.error+'<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
+                            $('#status_error').html(html);
+                            setTimeout(function() {
+                                $('.alert-danger').fadeOut('slow');
+                            }, 2500);
+                        }
                     }
                 }
             });

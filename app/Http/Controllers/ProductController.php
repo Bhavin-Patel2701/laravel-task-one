@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Auth;
 use App\Exports\ProductExport;
 use App\Imports\ProductImport;
 use Illuminate\Http\Request;
@@ -20,9 +21,20 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $allproduct_entries = Product::select('product.*','category.title as category_title')
+        $allproduct_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title')
         ->leftJoin('category','category.id','=','product.category_id')
-        ->get();
+        ->leftJoin('category as child_category','child_category.id','=','product.child_category_id');
+
+        if (Auth::user()->role === "vendor") {
+            $allproduct_entries = $allproduct_entries->where('product.status', 'active')
+            ->orWhere(function($query) {
+                $query->where('product.status', 'inactive')
+                      ->where('product.user_id', Auth::user()->id);
+            })->get();
+        }
+        else {
+            $allproduct_entries = $allproduct_entries->get();
+        }
         
         /* $all = Product::with('category')->get();
         foreach ($all as $a){
@@ -86,10 +98,13 @@ class ProductController extends Controller
         $rules = [
             'category_id' => 'required|exists:category,id',
             'title' => 'required|string|min:2|max:255',
-            'status' => 'required|in:active,inactive',
             'quantity' => 'required|numeric|between:1,100',
             'price' => 'required|numeric|between:10,100000'
         ];
+
+        if (Auth::user()->role === "admin") {
+            $rules['status'] = 'required|in:active,inactive';  // Validation rule for enum
+        }
 
         $messages = [
             'description.min' => 'The description must be at least 2 characters.',
@@ -111,6 +126,10 @@ class ProductController extends Controller
 
         $data = $request->validate($rules, $messages);
 
+        if (Auth::user()->role !== "admin") {
+            $data['status'] = "inactive";
+        }
+
         if (!empty($data['image'])) {
             $img_fileName = time()."_img.".$data['image']->getClientOriginalExtension();
             $request->file('image')->storeAs('public/upload/image', $img_fileName);
@@ -119,8 +138,9 @@ class ProductController extends Controller
             $data['image'] = $img_pathName;
         }
 
-        Product::create($data);
+        $data['user_id'] = Auth::user()->id;
 
+        Product::create($data);
         Session::flash('success', 'New Product created successfully.');
 
         return redirect()->route('product.list');
@@ -134,11 +154,18 @@ class ProductController extends Controller
      */
     public function show($id)
     {
-        $product_entries = Product::select('product.*','category.title as category_title')
+        $product_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title')
         ->leftJoin('category','category.id','=','product.category_id')
+        ->leftJoin('category as child_category','child_category.id','=','product.child_category_id')
         ->where('product.id',$id)->first();
 
-        return view('product.show', compact('product_entries'));
+        if ($product_entries->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            return view('product.show', compact('product_entries'));
+        }
+        else {
+            Session::flash('error', 'You are not authorized to show this Product.');
+            return redirect()->route('product.list');
+        }
     }
 
     /**
@@ -151,11 +178,18 @@ class ProductController extends Controller
     {
         $active_category = Category::where('status', 'active')->get();
 
-        $product_entries = Product::select('product.*','category.title as category_title')
+        $product_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title')
         ->leftJoin('category','category.id','=','product.category_id')
+        ->leftJoin('category as child_category','child_category.id','=','product.child_category_id')
         ->where('product.id',$id)->first();
 
-        return view('product.edit', compact('active_category','product_entries'));
+        if ($product_entries->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            return view('product.edit', compact('active_category','product_entries'));
+        }
+        else {
+            Session::flash('error', 'You are not authorized to edit this Product.');
+            return redirect()->route('product.list');
+        }
     }
 
     /**
@@ -185,6 +219,10 @@ class ProductController extends Controller
             $rules['description'] = 'required|string|min:2';
         }
 
+        if ($request->filled('child_category_id')) {
+            $rules['child_category_id'] = 'required|exists:category,id';
+        }
+
         if ($request->file('image')) {
             $rules['image'] = 'required|image|mimes:jpeg,png,jpg|max:1024';
         }
@@ -211,6 +249,10 @@ class ProductController extends Controller
             $singale_info->description = $data['description'];
         }
 
+        if (!empty($data['child_category_id'])) {
+            $singale_info->child_category_id = $data['child_category_id'];
+        }
+
         if (!empty($data['image'])) {
             $singale_info->image = $data['image'];
         }
@@ -218,7 +260,6 @@ class ProductController extends Controller
         $singale_info->save();
 
         Session::flash('success', 'Product details update successfully.');
-
         return redirect()->route('product.list');
     }
 
@@ -232,25 +273,35 @@ class ProductController extends Controller
     {
         $singale_info = Product::findOrFail($id);
 
-        if (Storage::disk('public')->exists($singale_info->image))
-        {
-            Storage::disk('public')->delete($singale_info->image);
-            $singale_info->image = null;
-            $singale_info->save();
+        if ($singale_info->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            if (Storage::disk('public')->exists($singale_info->image))
+            {
+                Storage::disk('public')->delete($singale_info->image);
+                $singale_info->image = null;
+                $singale_info->save();
+            }
+            Session::flash('success', 'Product image delete successfully.');
+            return redirect()->route('product.list');
         }
-
-        Session::flash('success', 'Product image delete successfully.');
-
-        return redirect()->route('product.list');
+        else {
+            Session::flash('error', 'You are not authorized to remove this Product image.');
+            return redirect()->route('product.list');
+        }
     }
 
     public function status($id)
     {
         $singale_info = Product::findOrFail($id);
-        $singale_info->status = $singale_info->status === 'active' ? 'inactive' : 'active';
-        $singale_info->save();
 
-        return response()->json(['status' => $singale_info->status]);
+        if ($singale_info->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            $singale_info->status = $singale_info->status === 'active' ? 'inactive' : 'active';
+
+            $singale_info->save();
+            return response()->json(['status' => $singale_info->status]);
+        }
+        else {
+            return response()->json(['error' => 'You are not authorized to active or inactive this Product.'], 403);
+        }
     }
 
     public function childcategory(Request $request)
@@ -265,7 +316,10 @@ class ProductController extends Controller
 
     public function export(Request $request)
     {
-        return Excel::download(new ProductExport, 'products.csv');
+        $user_id = Auth::user()->id;
+        $user_role = Auth::user()->role;
+
+        return Excel::download(new ProductExport($user_id, $user_role), 'products.csv');
     }
 
     public function import(Request $request)
@@ -276,7 +330,22 @@ class ProductController extends Controller
 
         $data = $request->file('csv_file');
 
-        Excel::import(new ProductImport, $data);
+        $user_id = Auth::user()->id;
+        $user_role = Auth::user()->role;
+
+        $import = new ProductImport($user_id, $user_role);
+
+        Excel::import($import, $data);
+
+        $skippedRowNumbers = $import->getSkippedRowNumbers();
+        if (!empty($skippedRowNumbers)) {
+            Session::flash('error', 'The following rows were skipped because they did not meet the necessary criteria: '.implode(', ', $skippedRowNumbers).'. Please review and try again.');
+        }
+
+        $getDuplicateRowNumbers = $import->getDuplicateRowNumbers();
+        if (!empty($getDuplicateRowNumbers)) {
+            Session::flash('alert', 'The following rows contain duplicate entries and were not imported: '.implode(', ', $getDuplicateRowNumbers).'.');
+        }
 
         Session::flash('success', 'All Products are import successfully.');
 
@@ -292,9 +361,14 @@ class ProductController extends Controller
     public function destroy($id)
     {
         $data = Product::findOrFail($id);
-        $data->delete();
 
-        Session::flash('success', 'Product move to trash successfully.');
+        if ($data->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            $data->delete();
+            Session::flash('success', 'Product move to trash successfully.');
+        }
+        else {
+            Session::flash('error', 'You are not authorized to delete this Product.');
+        }
 
         return redirect()->route('product.list');
     }

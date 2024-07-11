@@ -24,6 +24,14 @@ class Brand extends Model
      * @var array
      */
     protected $fillable = [
-        'title', 'status'
+        'title', 'status', 'user_id'
     ];
+
+    /**
+     * Get the category that owns the product.
+     */
+    function user()
+    {
+        return $this->hasOne(User::class, 'id');
+    }
 }

@@ -20,9 +20,7 @@ use App\Http\Controllers\BrandController;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', function () { return view('welcome'); })->name('welcome');
 
 Route::get('/laravel', function () {
     return view('welcome');
@@ -38,9 +36,11 @@ Auth::routes([
 ]);
 // Auth::routes();
 
-Route::group(['middleware' => ['auth', 'admin']], function () {
+Route::group(['middleware' => ['auth', 'adminorvendor']], function () {
     Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
+});
 
+Route::group(['middleware' => ['auth', 'admin']], function () {
     // users crud operation
     Route::prefix('users')->group(function () {
         Route::get('list', [UsersController::class, 'index'])->name('users.list');
@@ -51,7 +51,9 @@ Route::group(['middleware' => ['auth', 'admin']], function () {
         Route::post('update/{id}', [UsersController::class, 'update'])->name('users.update');
         Route::get('destroy/{id}', [UsersController::class, 'destroy'])->name('users.destroy');
     });
+});
 
+Route::group(['middleware' => ['auth', 'adminorvendor']], function () {
     // category crud operation
     Route::prefix('category')->group(function () {
         Route::get('list', [CategoryController::class, 'index'])->name('category.list');
@@ -94,27 +96,19 @@ Route::group(['middleware' => ['auth', 'admin']], function () {
 
         Route::get('status/{id}', [BrandController::class, 'status'])->name('brand.status');
     });
-
-    // trash data
-    Route::get('trash', [UsersController::class, 'trashrecord'])->name('users.trash');
-    Route::get('trash', [CategoryController::class, 'trashrecord'])->name('category.trash');
-    Route::get('trash', [ProductController::class, 'trashrecord'])->name('product.trash');
-
-    // restore data
-    Route::get('restore/{id}', [UsersController::class, 'restore'])->name('users.restore');
-    Route::get('restore/{id}', [CategoryController::class, 'restore'])->name('category.restore');
-    Route::get('restore/{id}', [ProductController::class, 'restore'])->name('product.restore');
-
-    // permanent delete
-    Route::get('delete/{id}', [UsersController::class, 'delete'])->name('users.delete');
-    Route::get('delete/{id}', [CategoryController::class, 'delete'])->name('category.delete');
-    Route::get('delete/{id}', [ProductController::class, 'delete'])->name('product.delete');
 });
 
-Route::group(['middleware' => ['auth', 'vendor']], function () {
-    Route::get('/', function () { return view('welcome'); });
-});
+/* // trash data
+Route::get('trash', [UsersController::class, 'trashrecord'])->name('users.trash');
+Route::get('trash', [CategoryController::class, 'trashrecord'])->name('category.trash');
+Route::get('trash', [ProductController::class, 'trashrecord'])->name('product.trash');
 
-Route::group(['middleware' => ['auth', 'user']], function () {
-    Route::get('/', function () { return view('welcome'); });
-});
+// restore data
+Route::get('restore/{id}', [UsersController::class, 'restore'])->name('users.restore');
+Route::get('restore/{id}', [CategoryController::class, 'restore'])->name('category.restore');
+Route::get('restore/{id}', [ProductController::class, 'restore'])->name('product.restore');
+
+// permanent delete
+Route::get('delete/{id}', [UsersController::class, 'delete'])->name('users.delete');
+Route::get('delete/{id}', [CategoryController::class, 'delete'])->name('category.delete');
+Route::get('delete/{id}', [ProductController::class, 'delete'])->name('product.delete'); */

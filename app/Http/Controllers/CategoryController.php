@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Models\Product;
@@ -17,7 +18,18 @@ class CategoryController extends Controller
     public function index()
     {
         $all_entries = Category::select('category.*', 'parent.title as parent_category')
-        ->leftJoin('category as parent', 'category.parent_id', '=', 'parent.id')->get();
+        ->leftJoin('category as parent', 'category.parent_id', '=', 'parent.id');
+
+        if (Auth::user()->role === "vendor") {
+            $all_entries = $all_entries->where('category.status', 'active')
+            ->orWhere(function($query) {
+                $query->where('category.status', 'inactive')
+                      ->where('category.user_id', Auth::user()->id);
+            })->get();
+        }
+        else {
+            $all_entries = $all_entries->get();
+        }
 
         return view('category.index', compact('all_entries'));
     }
@@ -61,6 +73,7 @@ class CategoryController extends Controller
     public function create()
     {
         $active_entries = Category::where('status', 'active')->get();
+
         return view('category.create', compact('active_entries'));
     }
 
@@ -74,16 +87,25 @@ class CategoryController extends Controller
     {
         $rules = [
             'title' => 'required|string|min:2|max:50',
-            'status' => 'required|in:active,inactive'  // Validation rule for enum
         ];
+
+        if (Auth::user()->role === "admin") {
+            $rules['status'] = 'required|in:active,inactive';  // Validation rule for enum
+        }
 
         if ($request->filled('parent_id')) {
             $rules['parent_id'] = 'required|exists:category,id';
         }
 
         $data = $request->validate($rules);
-        Category::create($data);
 
+        if (Auth::user()->role !== "admin") {
+            $data['status'] = "inactive";
+        }
+
+        $data['user_id'] = Auth::user()->id;
+
+        Category::create($data);
         Session::flash('success', 'New Category created successfully.');
 
         return redirect()->route('category.list');
@@ -101,7 +123,13 @@ class CategoryController extends Controller
         ->leftJoin('category as parent', 'category.parent_id', '=', 'parent.id')
         ->where('category.id', $id)->first();
 
-        return view('category.show', compact('singale_entry'));
+        if ($singale_entry->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            return view('category.show', compact('singale_entry'));
+        }
+        else {
+            Session::flash('error', 'You are not authorized to show this Category.');
+            return redirect()->route('category.list');
+        }
     }
 
     /**
@@ -115,7 +143,13 @@ class CategoryController extends Controller
         $singale_entry = Category::findOrFail($id);
         $all_entries = Category::where('id', '!=', $id)->where('status', 'active')->get();
 
-        return view('category.edit', compact('singale_entry', 'all_entries'));
+        if ($singale_entry->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            return view('category.edit', compact('singale_entry', 'all_entries'));
+        }
+        else {
+            Session::flash('error', 'You are not authorized to edit this Category.');
+            return redirect()->route('category.list');
+        }
     }
 
     /**
@@ -181,21 +215,35 @@ class CategoryController extends Controller
     public function status($id)
     {
         $singale_info = Category::findOrFail($id);
-        $singale_info->status = $singale_info->status === 'active' ? 'inactive' : 'active';
 
-        if ($singale_info->status === "inactive") {
-            $product_category = Product::where('category_id', $id)->get();
+        if ($singale_info->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            $singale_info->status = $singale_info->status === 'active' ? 'inactive' : 'active';
 
-            foreach ($product_category as $product_cat)
-            {
-                $product_cat->category_id = null;
-                $product_cat->status = "inactive";
-                $product_cat->save();
+            if ($singale_info->status === "inactive") {
+                $product_category = Product::where('category_id', $id)->get();
+
+                foreach ($product_category as $product_cat)
+                {
+                    $product_cat->category_id = null;
+                    $product_cat->status = "inactive";
+                    $product_cat->save();
+                }
+
+                $product_child_category = Product::where('child_category_id', $id)->get();
+
+                foreach ($product_child_category as $product_childcat)
+                {
+                    $product_childcat->child_category_id = null;
+                    $product_childcat->status = "inactive";
+                    $product_childcat->save();
+                }
             }
+            $singale_info->save();
+            return response()->json(['status' => $singale_info->status]);
         }
-        $singale_info->save();
-
-        return response()->json(['status' => $singale_info->status]);
+        else {
+            return response()->json(['error' => 'You are not authorized to active or inactive this Category.'], 403);
+        }
     }
 
     /**
@@ -206,19 +254,22 @@ class CategoryController extends Controller
      */
     public function destroy($id)
     {
-        $child_category = Category::where('parent_id', $id)->get();
-
-        foreach ($child_category as $category)
-        {
-            $category->parent_id = null;
-            $category->status = "inactive";
-            $category->save();
-        }
-
         $data = Category::findOrFail($id);
-        $data->delete();
 
-        Session::flash('success', 'Category move to trash successfully.');
+        if ($data->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            $child_category = Category::where('parent_id', $id)->get();
+            foreach ($child_category as $category)
+            {
+                $category->parent_id = null;
+                $category->status = "inactive";
+                $category->save();
+            }
+            $data->delete();
+            Session::flash('success', 'Category move to trash successfully.');
+        }
+        else {
+            Session::flash('error', 'You are not authorized to delete this Category.');
+        }
 
         return redirect()->route('category.list');
     }

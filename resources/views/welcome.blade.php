@@ -25,10 +25,8 @@
             @if (Route::has('login'))
                 <div class="hidden fixed top-0 right-0 px-6 py-4 sm:block">
                     @auth
-                        @if (Auth::user()->role === 'admin')
+                        @if (Auth::user()->role === 'admin' || Auth::user()->role === 'vendor')
                             <a href="{{ url('/dashboard') }}" class="text-sm text-gray-700 underline">Dashboard</a>
-                        @elseif (Auth::user()->role === 'vendor')
-                            <a href="#" class="text-sm text-gray-700 underline">Vendor</a>
                         @elseif (Auth::user()->role === 'user')
                             <a href="#" class="text-sm text-gray-700 underline">User</a>
                         @endif
@@ -138,5 +136,13 @@
                 </div>
             </div>
         </div>
+
+        @if (Route::has('login'))
+            @auth
+                <script>
+                    alert("You are not authorized to access this page.");
+                </script>
+            @endauth
+        @endif
     </body>
 </html>

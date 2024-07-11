@@ -20,23 +20,34 @@ class ProductExport implements FromQuery, WithHeadings, WithMapping, ShouldQueue
 
     use Exportable;
 
+    protected $user_id;
+    protected $user_role;
+
+    // Constructor to accept user ID and role
+    public function __construct($user_id, $user_role)
+    {
+        $this->user_id = $user_id;
+        $this->user_role = $user_role;
+    }
+
     /**
      * @return \Illuminate\Database\Query\Builder
      */
     public function query()
     {
-        return Product::query()
-        ->select(
-            'product.title',
-            'product.description',
-            'product.status',
-            'product.quantity',
-            'product.price',
-            'category.title as category_title',
-            'child_category.title as childcat_title'
-        )
+        $query = Product::select('product.*','category.title as category_title','child_category.title as child_category_title')
         ->leftJoin('category','category.id','=','product.category_id')
         ->leftJoin('category as child_category','child_category.id','=','product.child_category_id');
+
+        if ($this->user_role !== "admin") {
+            $query = $query->where('product.status', 'active')
+            ->orWhere(function($allproduct_entries) {
+                $allproduct_entries->where('product.status', 'inactive')
+                      ->where('product.user_id', $this->user_id);
+            });
+        }
+
+        return $query;
     }
 
     /**
@@ -46,12 +57,14 @@ class ProductExport implements FromQuery, WithHeadings, WithMapping, ShouldQueue
      */
     public function map($row): array
     {
+        $status = $this->user_role !== "admin" ? ($row->status === 'active' ? 'Approved' : 'Not Approved') : $row->status;
+
         return [
             $row->category_title,
-            $row->childcat_title,
+            $row->child_category_title ?? 'No Child Category',
             $row->title,
-            $row->description,
-            $row->status,
+            $row->description ?? 'No Description',
+            $status,
             $row->quantity,
             $row->price
         ];

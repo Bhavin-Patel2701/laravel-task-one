@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Http\Request;
 use App\Models\Brand;
+use Illuminate\Support\Facades\Auth;
 
 class BrandController extends Controller
 {
@@ -17,12 +18,54 @@ class BrandController extends Controller
     {
         $search = $request->input('search');
 
-        if ($search === null) {
-            $allbrand_entries = Brand::paginate(5);
+        /* if (Auth::user()->role === "vendor") {
+            if ($search === null) {
+                // $allbrand_entries = Brand::where('user_id', Auth::user()->id)
+                // ->paginate(5);
+                $allbrand_entries = Brand::where('status', 'active')
+                ->orWhere(function($query) {
+                    $query->where('status', 'inactive')
+                          ->where('user_id', Auth::user()->id);
+                })->paginate(5);
+            }
+            else {
+                $allbrand_entries = Brand::where('user_id', Auth::user()->id)
+                ->where('title', 'LIKE', "%{$search}%")
+                ->orWhere('status', 'LIKE', "%{$search}%")->paginate(5);
+            }
         }
-        else {
-            $allbrand_entries = Brand::where('title', 'LIKE', "%{$search}%")
-            ->orWhere('status', 'LIKE', "%{$search}%")->paginate(5);
+         */
+
+        if (Auth::user()->role === "vendor") {
+            $allbrand_entries = Brand::where(function($query) use ($search) {
+                if ($search === null) {
+                    $query->where('status', 'active')->orWhere(function($query) {
+                        $query->where('status', 'inactive')
+                        ->where('user_id', Auth::user()->id);
+                    });
+                } else {
+                    $query->where(function($query) use ($search) {
+                        $query->where('user_id', Auth::user()->id)
+                        ->where('title', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhere(function($query) use ($search) {
+                        $query->where('user_id', Auth::user()->id)
+                        ->where('status', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhere(function($query) use ($search) {
+                        $query->where('status', 'active')
+                        ->where('title', 'LIKE', "%{$search}%");
+                    });
+                }
+            })->paginate(5);
+        } else {
+            if ($search === null) {
+                $allbrand_entries = Brand::paginate(5);
+            }
+            else {
+                $allbrand_entries = Brand::where('title', 'LIKE', "%{$search}%")
+                ->orWhere('status', 'LIKE', "%{$search}%")->paginate(5);
+            }
         }
 
         return view('brand.index', compact('allbrand_entries', 'search'));
@@ -47,14 +90,22 @@ class BrandController extends Controller
     public function store(Request $request)
     {
         $rules = [
-            'title' => 'required|string|min:2|max:255',
-            'status' => 'required|in:active,inactive'
+            'title' => 'required|string|min:2|max:255'
         ];
+
+        if (Auth::user()->role === "admin") {
+            $rules['status'] = 'required|in:active,inactive';  // Validation rule for enum
+        }
 
         $data = $request->validate($rules);
 
-        Brand::create($data);
+        if (Auth::user()->role !== "admin") {
+            $data['status'] = "inactive";
+        }
 
+        $data['user_id'] = Auth::user()->id;
+
+        Brand::create($data);
         Session::flash('success', 'New Brand created successfully.');
 
         return redirect()->route('brand.list');
@@ -70,7 +121,13 @@ class BrandController extends Controller
     {
         $brand_entries = Brand::findOrFail($id);
 
-        return view('brand.show', compact('brand_entries'));
+        if ($brand_entries->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            return view('brand.show', compact('brand_entries'));
+        }
+        else {
+            Session::flash('error', 'You are not authorized to show this Brand.');
+            return redirect()->route('brand.list');
+        }
     }
 
     /**
@@ -83,7 +140,13 @@ class BrandController extends Controller
     {
         $brand_entries = Brand::findOrFail($id);
 
-        return view('brand.edit', compact('brand_entries'));
+        if ($brand_entries->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            return view('brand.edit', compact('brand_entries'));
+        }
+        else {
+            Session::flash('error', 'You are not authorized to edit this Brand.');
+            return redirect()->route('brand.list');
+        }
     }
 
     /**
@@ -106,7 +169,6 @@ class BrandController extends Controller
 
         $singale_info->title = $data['title'];
         $singale_info->status = $data['status'];
-
         $singale_info->save();
 
         Session::flash('success', 'Brand details update successfully.');
@@ -117,10 +179,14 @@ class BrandController extends Controller
     public function status($id)
     {
         $singale_info = Brand::findOrFail($id);
-        $singale_info->status = $singale_info->status === 'active' ? 'inactive' : 'active';
-        $singale_info->save();
-
-        return response()->json(['status' => $singale_info->status]);
+        if ($singale_info->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            $singale_info->status = $singale_info->status === 'active' ? 'inactive' : 'active';
+            $singale_info->save();
+            return response()->json(['status' => $singale_info->status]);
+        }
+        else {
+            return response()->json(['error' => 'You are not authorized to active or inactive this Brand.'], 403);
+        }
     }
 
     /**
@@ -132,10 +198,15 @@ class BrandController extends Controller
     public function destroy($id)
     {
         $data = Brand::findOrFail($id);
-        $data->delete();
 
-        Session::flash('success', 'Brand move to trash successfully.');
-
-        return redirect()->route('brand.list');
+        if ($data->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
+            $data->delete();
+            Session::flash('success', 'Brand move to trash successfully.');
+            return redirect()->route('brand.list');
+        }
+        else {
+            Session::flash('error', 'You are not authorized to delete this Brand.');
+            return redirect()->route('brand.list');
+        }
     }
 }

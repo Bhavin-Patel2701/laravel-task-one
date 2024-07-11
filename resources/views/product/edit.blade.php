@@ -58,6 +58,23 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
+                                        <label for="child_category_id">Child Category</label>
+
+                                        <select class="form-control @error('child_category_id') is-invalid @enderror" id="child_category_id" name="child_category_id">
+                                            <!-- <option disabled selected>Select Child Category</option> -->
+                                        </select>
+
+                                        @error('child_category_id')
+                                            <span class="invalid-feedback" role="alert">
+                                                <strong>{{ $message }}</strong>
+                                            </span>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-{{ Auth::user()->role === 'admin' ? '6' : '12' }}">
+                                    <div class="form-group">
                                         <label for="title">Product Name<span class="text-danger"> *</span></label>
 
                                         <input type="text" class="form-control @error('title') is-invalid @enderror" placeholder="{{ __('Enter Your Product Name') }}" id="title" name="title" value="{{ old('title', $product_entries->title) }}">
@@ -69,6 +86,26 @@
                                         @enderror
                                     </div>
                                 </div>
+                                @if (Auth::user()->role === "admin")
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="status">Status<span class="text-danger"> *</span></label>
+
+                                            <select class="form-control @error('status') is-invalid @enderror" id="status" name="status">
+                                                <option disabled {{ old('status') ? '' : 'selected' }}>Select Category Status</option>
+
+                                                <option value="active" {{ (old('status') == 'active' || $product_entries->status == 'active') ? 'selected' : '' }}>Active</option>
+                                                <option value="inactive" {{ (old('status') == 'inactive' || $product_entries->status == 'inactive') ? 'selected' : '' }}>Inactive</option>
+                                            </select>
+
+                                            @error('status')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                             <div class="row">
                                 <div class="col-md-12">
@@ -88,24 +125,6 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="status">Status<span class="text-danger"> *</span></label>
-
-                                        <select class="form-control @error('status') is-invalid @enderror" id="status" name="status">
-                                            <option disabled {{ old('status') ? '' : 'selected' }}>Select Category Status</option>
-
-                                            <option value="active" {{ (old('status') == 'active' || $product_entries->status == 'active') ? 'selected' : '' }}>Active</option>
-                                            <option value="inactive" {{ (old('status') == 'inactive' || $product_entries->status == 'inactive') ? 'selected' : '' }}>Inactive</option>
-                                        </select>
-
-                                        @error('status')
-                                            <span class="invalid-feedback" role="alert">
-                                                <strong>{{ $message }}</strong>
-                                            </span>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
                                         <label for="quantity">Product Quantity<span class="text-danger"> *</span></label>
 
                                         <input type="number" class="form-control @error('quantity') is-invalid @enderror" placeholder="{{ __('Enter Your Product Quantity') }}" id="quantity" name="quantity" value="{{ old('quantity', $product_entries->quantity) }}">
@@ -117,8 +136,6 @@
                                         @enderror
                                     </div>
                                 </div>
-                            </div>
-                            <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="price">Price<span class="text-danger"> *</span></label>
@@ -138,7 +155,9 @@
                                         @enderror
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
                                     <div class="form-group">
                                         <label for="image">Product Image</label>
 
@@ -180,5 +199,55 @@
     <!-- /.container-fluid -->
 </section>
 <!-- /.content -->
+
+@endsection
+
+@section('pagescript')
+
+<!-- Page specific script -->
+<script>
+    $(document).ready(function() {
+        function loadChildCategories(category_id, selectedChildCategoryId = null) {
+
+            $.ajax({
+                url: "{{ route('product.childcategory') }}",
+                type: 'GET',
+                data: { 
+                    _token: "{{ csrf_token() }}",
+                    category_id: category_id
+                },
+                success: function(response) {
+                    var child_category_id = $('#child_category_id');
+                    child_category_id.empty();
+
+                    if(response.status && response.status.length > 0) {
+                        // child_category_id.append('<option disabled selected>Select Child Category</option>');
+                        $.each(response.status, function (index, value){
+                            // var selected = (value.id == '{{ old("child_category_id") }}') ? 'selected' : '';
+                            var selected = (value.id == selectedChildCategoryId) ? 'selected' : '';
+                            child_category_id.append('<option value="'+value.id+'" '+selected+'>'+value.title+'</option>');
+                        });
+                    } else {
+                        child_category_id.append('<option disabled selected>No Child Category</option>');
+                    }
+                }
+            });
+        }
+
+        // Load child categories on page load if a parent category is already selected
+        var initialCategoryId = "{{ old('category_id', $product_entries->category_id) }}";
+        var initialChildCategoryId = "{{ old('child_category_id', $product_entries->child_category_id) }}";
+        if (initialCategoryId) {
+            loadChildCategories(initialCategoryId, initialChildCategoryId);
+        }
+
+        // Load child categories when the parent category changes
+        $('#category_id').change(function() {
+            var category_id = $(this).val();
+            loadChildCategories(category_id);
+        });
+    });
+</script>
+<!-- /.Page specific script -->
 
 @endsection

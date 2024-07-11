@@ -24,7 +24,7 @@ class Category extends Model
      * @var array
      */
     protected $fillable = [
-        'parent_id', 'title', 'status'
+        'parent_id', 'title', 'status', 'user_id'
     ];
 
     /**
@@ -41,5 +41,10 @@ class Category extends Model
     public function children()
     {
         return $this->hasMany(Category::class, 'parent_id');
+    }
+
+    function user()
+    {
+        return $this->hasOne(User::class, 'id');
     }
 }

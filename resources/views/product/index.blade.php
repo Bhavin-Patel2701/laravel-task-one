@@ -41,6 +41,27 @@
                             </div>
                         @endif
 
+                        @if(Session::has('error'))
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                {{ Session::get('error') }}
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        @endif
+
+                        @if(Session::has('alert'))
+                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                {{ Session::get('alert') }}
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        @endif
+
+                        <div id="status_error">
+                        </div>
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <a href="{{ route('product.export') }}">
@@ -51,7 +72,12 @@
                                 <button class="btn btn-info" data-toggle="modal" data-target="#exampleModal">
                                     <i class="fa fa-plus"></i> Import Data
                                 </button>
-                                <a href="{{ asset('storage/download/importproducts.csv') }}" download>
+
+                                @if (Auth::user()->role === "admin")
+                                    <a href="{{ asset('storage/download/importproducts_admin.csv') }}" download>
+                                @else
+                                    <a href="{{ asset('storage/download/importproducts_vendor.csv') }}" download>
+                                @endif
                                     <button class="btn btn-success">
                                         <i class="fa fa-upload"></i> Demo File
                                     </button>
@@ -70,13 +96,17 @@
                             <thead>
                                 <tr>
                                     <th>Sr. No.</th>
-                                    <th>Category Name</th>
+                                    <th>Category</th>
+                                    <th>Child Category</th>
                                     <th>Product Name</th>
                                     <th>Quantity</th>
                                     <th>Price (₹)</th>
                                     <th>Product Image</th>
                                     <th>Status</th>
-                                    <th>Action</th>
+
+                                    @if (Auth::user()->role === "admin")
+                                        <th>Action</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -86,7 +116,15 @@
                                 @foreach ($allproduct_entries as $entries)
                                     <tr>
                                         <th>{{ $entriesID++ }}.</th>
-                                        <td>{{ $entries->category_title }}</td>
+
+                                        <td class="{{ $entries->category_title === Null ? 'text-danger' : '' }}">
+                                            {{ $entries->category_title !== null ? $entries->category_title : 'No Category' }}
+                                        </td>
+                                        
+                                        <td class="{{ $entries->child_category_title === Null ? 'text-danger' : '' }}">
+                                            {{ $entries->child_category_title !== null ? $entries->child_category_title : 'No Child Category' }}
+                                        </td>
+
                                         <td>{{ $entries->title }}</td>
                                         <td>{{ $entries->quantity }}</td>
                                         <td>{{ $entries->price }}</td>
@@ -97,27 +135,41 @@
                                                 No Image Uploaded
                                             @endif
                                         </td>
-                                        <td>
-                                            <span id="status-{{ $entries->id }}" class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }} toggle-status" data-id="{{ $entries->id }}" style="cursor: pointer;">{{ $entries->status }}</span>
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('product.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
-                                            <a href="{{ route('product.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
-                                            <a href="{{ route('product.destroy', $entries->id) }}" class="btn btn-sm btn-danger mt-1" onclick="return confirm('Are you sure you want move to trash this Product ?');">Move to Trash</a>
-                                        </td>
+
+                                        @if (Auth::user()->role !== "admin")
+                                            <td>
+                                                <span class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }}">{{ $entries->status === 'active' ? 'Approved' : 'Not Approved' }}</span>
+                                            </td>
+                                        @else
+                                            <td>
+                                                <span id="status-{{ $entries->id }}" class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }} toggle-status" data-id="{{ $entries->id }}" style="cursor: pointer;">{{ $entries->status }}</span>
+                                            </td>
+                                        @endif
+
+                                        @if (Auth::user()->role === "admin")
+                                            <td>
+                                                <a href="{{ route('product.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
+                                                <a href="{{ route('product.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
+                                                <a href="{{ route('product.destroy', $entries->id) }}" class="btn btn-sm btn-danger mt-1" onclick="return confirm('Are you sure you want move to trash this Product ?');">Move to Trash</a>
+                                            </td>
+                                        @endif
                                     </tr>
                                 @endforeach
                             </tbody>
                             <tfoot>
                                 <tr>
                                     <th>Sr. No.</th>
-                                    <th>Category Name</th>
+                                    <th>Category</th>
+                                    <th>Child Category</th>
                                     <th>Product Name</th>
                                     <th>Quantity</th>
                                     <th>Price (₹)</th>
                                     <th>Product Image</th>
                                     <th>Status</th>
-                                    <th>Action</th>
+
+                                    @if (Auth::user()->role === "admin")
+                                        <th>Action</th>
+                                    @endif
                                 </tr>
                             </tfoot>
                         </table>
@@ -199,11 +251,13 @@
 
     $(document).ready(function() {
         setTimeout(function() {
-            $('.alert-success').fadeOut('slow');
+            $('.alert-success, .alert-danger, .alert-warning').fadeOut('slow');
         }, 2500);
 
         $('.toggle-status').on('click', function() {
             var id = $(this).data('id');
+            
+            alert(id);
 
             $.ajax({
                 url: "{{ route('product.status', '') }}/"+id,
@@ -217,6 +271,18 @@
                         status_badge.removeClass('badge-danger').addClass('badge-success');
                     } else {
                         status_badge.removeClass('badge-success').addClass('badge-danger');
+                    }
+                },
+                error: function(xhr) {
+                    if (xhr.status === 403) {
+                        let response = xhr.responseJSON;
+                        if (response.error) {
+                            html = '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+response.error+'<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
+                            $('#status_error').html(html);
+                            setTimeout(function() {
+                                $('.alert-danger').fadeOut('slow');
+                            }, 2500);
+                        }
                     }
                 }
             });

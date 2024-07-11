@@ -50,24 +50,26 @@
                                         @enderror
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="status">Status<span class="text-danger"> *</span></label>
+                                @if (Auth::user()->role === "admin")
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="status">Status<span class="text-danger"> *</span></label>
 
-                                        <select class="form-control @error('status') is-invalid @enderror" id="status" name="status">
-                                            <option disabled {{ old('status') ? '' : 'selected' }}>Select Product Status</option>
+                                            <select class="form-control @error('status') is-invalid @enderror" id="status" name="status">
+                                                <option disabled {{ old('status') ? '' : 'selected' }}>Select Product Status</option>
 
-                                            <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
-                                            <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                                        </select>
+                                                <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
+                                                <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                            </select>
 
-                                        @error('status')
-                                            <span class="invalid-feedback" role="alert">
-                                                <strong>{{ $message }}</strong>
-                                            </span>
-                                        @enderror
+                                            @error('status')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
                                     </div>
-                                </div>
+                                @endif
                             </div>
                         </div>
 

@@ -24,7 +24,7 @@ class Product extends Model
      * @var array
      */
     protected $fillable = [
-        'category_id', 'title', 'description', 'status', 'quantity', 'price', 'image', 'child_category_id'
+        'category_id', 'title', 'description', 'status', 'quantity', 'price', 'image', 'child_category_id', 'user_id'
     ];
 
     /**
@@ -33,5 +33,10 @@ class Product extends Model
     function category()
     {
         return $this->hasOne(Category::class, 'id');
+    }
+
+    function user()
+    {
+        return $this->hasOne(User::class, 'id');
     }
 }

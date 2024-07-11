@@ -43,9 +43,25 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
+                                    <label>Child Category</label>
+
+                                    <input type="text" class="form-control" value="{{ $product_entries->child_category_title }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
                                     <label>Product Name</label>
 
                                     <input type="text" class="form-control" value="{{ $product_entries->title }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Status</label>
+
+                                    <input type="text" class="form-control text-{{ $product_entries->status === 'active' ? 'success' : 'danger' }}" value="{{ ucwords(strtolower($product_entries->status)) }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -61,25 +77,11 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Status</label>
-
-                                    <input type="text" class="form-control" value="{{ ucwords(strtolower($product_entries->status)) }}" readonly
-                                    @if($product_entries->status === "active")
-                                        style="color: green;"
-                                    @elseif($product_entries->status === "inactive")
-                                        style="color: red;"
-                                    @endif>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
                                     <label>Product Quantity</label>
 
                                     <input type="text" class="form-control" value="{{ $product_entries->quantity }}" readonly>
                                 </div>
                             </div>
-                        </div>
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Price</label>
@@ -93,7 +95,9 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
                                 <div class="form-group">
                                     <label>Product Image</label>
 

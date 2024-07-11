@@ -61,7 +61,7 @@
                                         <label for="child_category_id">Child Category</label>
 
                                         <select class="form-control @error('child_category_id') is-invalid @enderror" id="child_category_id" name="child_category_id">
-                                            <option disabled selected>Select Child Category</option>
+                                            <!-- <option disabled selected>Select Child Category</option> -->
                                         </select>
 
                                         @error('child_category_id')
@@ -73,7 +73,7 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-{{ Auth::user()->role === 'admin' ? '6' : '12' }}">
                                     <div class="form-group">
                                         <label for="title">Product Name<span class="text-danger"> *</span></label>
 
@@ -86,24 +86,26 @@
                                         @enderror
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="status">Status<span class="text-danger"> *</span></label>
+                                @if (Auth::user()->role === "admin")
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="status">Status<span class="text-danger"> *</span></label>
 
-                                        <select class="form-control @error('status') is-invalid @enderror" id="status" name="status">
-                                            <option disabled {{ old('status') ? '' : 'selected' }}>Select Product Status</option>
+                                            <select class="form-control @error('status') is-invalid @enderror" id="status" name="status">
+                                                <option disabled {{ old('status') ? '' : 'selected' }}>Select Product Status</option>
 
-                                            <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
-                                            <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                                        </select>
+                                                <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
+                                                <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                            </select>
 
-                                        @error('status')
-                                            <span class="invalid-feedback" role="alert">
-                                                <strong>{{ $message }}</strong>
-                                            </span>
-                                        @enderror
+                                            @error('status')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
                                     </div>
-                                </div>
+                                @endif
                             </div>
                             <div class="row">
                                 <div class="col-md-12">
@@ -196,8 +198,7 @@
 <!-- Page specific script -->
 <script>
     $(document).ready(function() {
-        $('#category_id').change(function() {
-            var category_id = $("#category_id").val();
+        function loadChildCategories(category_id, selectedChildCategoryId = null) {
 
             $.ajax({
                 url: "{{ route('product.childcategory') }}",
@@ -211,7 +212,7 @@
                     child_category_id.empty();
 
                     if(response.status && response.status.length > 0) {
-                        child_category_id.append('<option disabled selected>Select Child Category</option>');
+                        // child_category_id.append('<option disabled selected>Select Child Category</option>');
                         $.each(response.status, function (index, value){
                             var selected = (value.id == '{{ old("child_category_id") }}') ? 'selected' : '';
                             child_category_id.append('<option value="'+value.id+'" '+selected+'>'+value.title+'</option>');
@@ -221,6 +222,20 @@
                     }
                 }
             });
+
+        }
+
+        // Load child categories on page load if a parent category is already selected
+        var initialCategoryId = "{{ old('category_id') }}";
+        var initialChildCategoryId = "{{ old('child_category_id') }}";
+        if (initialCategoryId) {
+            loadChildCategories(initialCategoryId, initialChildCategoryId);
+        }
+
+        // Load child categories when the parent category changes
+        $('#category_id').change(function() {
+            var category_id = $(this).val();
+            loadChildCategories(category_id);
         });
     });
 </script>

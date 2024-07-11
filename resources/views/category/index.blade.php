@@ -41,6 +41,18 @@
                             </div>
                         @endif
 
+                        @if(Session::has('error'))
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                {{ Session::get('error') }}
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        @endif
+
+                        <div id="status_error">
+                        </div>
+
                         <div class="row mb-3" style="text-align: end;">
                             <div class="col-md-12">
                                 <a href="{{ route('category.create') }}">
@@ -58,13 +70,17 @@
                                     <th>Parent Category</th>
                                     <th>Category Name</th>
                                     <th>Status</th>
-                                    <th>Action</th>
+
+                                    @if (Auth::user()->role === "admin")
+                                        <th>Action</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
                                 @php
                                     $entriesID = 1;
                                 @endphp
+                                    {{-- dd($all_entries); --}}
                                 @foreach ($all_entries as $entries)
                                     <tr>
                                         <th>{{ $entriesID++ }}.</th>
@@ -76,14 +92,25 @@
                                         @endif
 
                                         <td>{{ $entries->title }}</td>
-                                        <td>
-                                            <span id="status-{{ $entries->id }}" class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }} toggle-status" data-id="{{ $entries->id }}" style="cursor: pointer;">{{ $entries->status }}</span>
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('category.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
-                                            <a href="{{ route('category.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
-                                            <a href="{{ route('category.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this Category ?');">Move to Trash</a>
-                                        </td>
+
+                                        @if (Auth::user()->role !== "admin")
+                                            <td>
+                                                <span class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }}">{{ $entries->status === 'active' ? 'Approved' : 'Not Approved' }}</span>
+                                            </td>
+                                        @else
+                                            <td>
+                                                <span id="status-{{ $entries->id }}" class="badge badge-{{ $entries->status === 'active' ? 'success' : 'danger' }} toggle-status" data-id="{{ $entries->id }}" style="cursor: pointer;">{{ $entries->status }}</span>
+                                            </td>
+                                        @endif
+
+                                        @if (Auth::user()->role === "admin")
+                                            <td>
+                                                <a href="{{ route('category.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
+                                                <a href="{{ route('category.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
+                                                <a href="{{ route('category.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this Category ?');">Move to Trash</a>
+                                            </td>
+                                        @endif
+
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -93,7 +120,10 @@
                                     <th>Parent Category</th>
                                     <th>Category Name</th>
                                     <th>Status</th>
-                                    <th>Action</th>
+
+                                    @if (Auth::user()->role === "admin")
+                                        <th>Action</th>
+                                    @endif
                                 </tr>
                             </tfoot>
                         </table>
@@ -131,7 +161,7 @@
 
     $(document).ready(function() {
         setTimeout(function() {
-            $('.alert-success').fadeOut('slow');
+            $('.alert-success, .alert-danger').fadeOut('slow');
         }, 2500);
 
         $('.toggle-status').on('click', function() {
@@ -149,6 +179,18 @@
                         status_badge.removeClass('badge-danger').addClass('badge-success');
                     } else {
                         status_badge.removeClass('badge-success').addClass('badge-danger');
+                    }
+                },
+                error: function(xhr) {
+                    if (xhr.status === 403) {
+                        let response = xhr.responseJSON;
+                        if (response.error) {
+                            html = '<div class="alert alert-danger alert-dismissible fade show" role="alert">'+response.error+'<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
+                            $('#status_error').html(html);
+                            setTimeout(function() {
+                                $('.alert-danger').fadeOut('slow');
+                            }, 2500);
+                        }
                     }
                 }
             });
