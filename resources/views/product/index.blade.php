@@ -32,35 +32,27 @@
                 <div class="card">
                     <div class="card-body">
 
-                        @if(Session::has('success'))
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                {{ Session::get('success') }}
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
+                        @include('messages')
+
+                        @if(session()->has('failures'))
+                            <!-- <div class="alert alert-danger"> -->
+                                <ul>
+                                    @foreach(session()->get('failures') as $failure)
+                                        <li>Row {{ $failure->row() }}: {{ $failure->errors()[0] }}</li>
+                                    @endforeach
+                                </ul>
+                            <!-- </div> -->
                         @endif
 
-                        @if(Session::has('error'))
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                {{ Session::get('error') }}
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
+                        @if ($errors->any())
+                            <!-- <div class="alert alert-danger"> -->
+                                <ul>
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            <!-- </div> -->
                         @endif
-
-                        @if(Session::has('alert'))
-                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                                {{ Session::get('alert') }}
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                        @endif
-
-                        <div id="status_error">
-                        </div>
 
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -95,46 +87,49 @@
                         <table id="example1" class="table table-bordered table-striped">
                             <thead>
                                 <tr>
-                                    <th>Sr. No.</th>
+                                    <th>Product Image</th>
                                     <th>Category</th>
-                                    <th>Child Category</th>
                                     <th>Product Name</th>
                                     <th>Quantity</th>
                                     <th>Price (₹)</th>
-                                    <th>Product Image</th>
-                                    <th>Status</th>
 
                                     @if (Auth::user()->role === "admin")
-                                        <th>Action</th>
+                                        <th>Seller Name</th>
                                     @endif
+
+                                    <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                    $entriesID = 1;
-                                @endphp
                                 @foreach ($allproduct_entries as $entries)
                                     <tr>
-                                        <th>{{ $entriesID++ }}.</th>
-
-                                        <td class="{{ $entries->category_title === Null ? 'text-danger' : '' }}">
-                                            {{ $entries->category_title !== null ? $entries->category_title : 'No Category' }}
-                                        </td>
-                                        
-                                        <td class="{{ $entries->child_category_title === Null ? 'text-danger' : '' }}">
-                                            {{ $entries->child_category_title !== null ? $entries->child_category_title : 'No Child Category' }}
-                                        </td>
-
-                                        <td>{{ $entries->title }}</td>
-                                        <td>{{ $entries->quantity }}</td>
-                                        <td>{{ $entries->price }}</td>
                                         <td>
                                             @if(!empty($entries->image))
                                                 <img alt="Product Image" src="{{ asset('storage/'. $entries->image) }}" width="40" height="40">
                                             @elseif (empty($entries->image))
-                                                No Image Uploaded
+                                                <img alt="Product Image" src="{{ asset('default-img/product-img.png') }}" width="50" height="50">
                                             @endif
                                         </td>
+
+                                        <td><strong>{{ $entries->category_title }}</strong><br>{{ $entries->child_category_title }}</td>
+
+                                        <td>{{ $entries->title }}</td>
+                                        <td>
+                                            {{ $entries->quantity }}<br>
+                                            @if ($entries->quantity === 0)
+                                                <span class="badge bg-danger">Out of Stock</span>
+                                            @elseif ($entries->quantity >= 20)
+                                                <span class="badge bg-success">In Stock</span>
+                                            @elseif ($entries->quantity < 20)
+                                                <span class="badge bg-warning">Low Stock</span>
+                                            @endif
+                                        </td>
+                                        <td>₹ {{ $entries->price }} /-</td>
+
+                                        @if (Auth::user()->role === "admin")
+                                            <td><strong>{{ $entries->product_username }}</strong><br>({{ $entries->product_username_role }})</td>
+                                        @endif
 
                                         @if (Auth::user()->role !== "admin")
                                             <td>
@@ -146,30 +141,28 @@
                                             </td>
                                         @endif
 
-                                        @if (Auth::user()->role === "admin")
-                                            <td>
-                                                <a href="{{ route('product.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
-                                                <a href="{{ route('product.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
-                                                <a href="{{ route('product.destroy', $entries->id) }}" class="btn btn-sm btn-danger mt-1" onclick="return confirm('Are you sure you want move to trash this Product ?');">Move to Trash</a>
-                                            </td>
-                                        @endif
+                                        <td>
+                                            <a href="{{ route('product.show', $entries->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i></a>
+                                            <a href="{{ route('product.edit', $entries->id) }}" class="btn btn-sm btn-info"><i class="fa fa-edit"></i></a>
+                                            <a href="{{ route('product.destroy', $entries->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want move to trash this Product ?');"><i class="fa fa-trash"></i></a>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <th>Sr. No.</th>
+                                    <th>Product Image</th>
                                     <th>Category</th>
-                                    <th>Child Category</th>
                                     <th>Product Name</th>
                                     <th>Quantity</th>
                                     <th>Price (₹)</th>
-                                    <th>Product Image</th>
-                                    <th>Status</th>
 
                                     @if (Auth::user()->role === "admin")
-                                        <th>Action</th>
+                                        <th>Seller Name</th>
                                     @endif
+
+                                    <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -256,8 +249,6 @@
 
         $('.toggle-status').on('click', function() {
             var id = $(this).data('id');
-            
-            alert(id);
 
             $.ajax({
                 url: "{{ route('product.status', '') }}/"+id,
@@ -272,6 +263,11 @@
                     } else {
                         status_badge.removeClass('badge-success').addClass('badge-danger');
                     }
+                    html = '<div class="alert alert-success alert-dismissible fade show" role="alert">Your Product status is '+response.status+' now!<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
+                    $('#status_error').html(html);
+                    setTimeout(function() {
+                        $('.alert-success').fadeOut('slow');
+                    }, 1000);
                 },
                 error: function(xhr) {
                     if (xhr.status === 403) {

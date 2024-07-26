@@ -157,9 +157,9 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-12">
+                                <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="image">Product Image</label>
+                                        <label for="image">Main Product Image</label>
 
                                         <input type="file" class="form-control @error('image') is-invalid @enderror" name="image" id="image" accept="image/png, image/jpeg, image/jpg" />
 
@@ -168,6 +168,34 @@
                                                 <strong>{{ $message }}</strong>
                                             </span>
                                         @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="sku">SKU<span class="text-danger"> *</span></label>
+
+                                        <input type="text" class="form-control @error('sku') is-invalid @enderror" placeholder="{{ __('Enter Your SKU') }}" id="sku" name="sku" value="{{ old('sku') }}">
+
+                                        @error('sku')
+                                            <span class="invalid-feedback" role="alert">
+                                                <strong>{{ $message }}</strong>
+                                            </span>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label for="multi_image">Side Product Images</label>
+
+                                        <input type="file" class="form-control @if($errors->has('multi_image.*')) is-invalid @enderror" name="multi_image[]" id="multi_image" accept="image/png, image/jpeg, image/jpg" multiple/>
+
+                                        @if ($errors->has('multi_image.*'))
+                                            <span class="invalid-feedback" role="alert">
+                                                <strong>{{ $errors->first('multi_image.*') }}</strong>
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                             </div>

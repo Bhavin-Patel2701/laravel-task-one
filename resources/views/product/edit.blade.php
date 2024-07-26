@@ -36,6 +36,9 @@
                         @csrf
 
                         <div class="card-body">
+
+                            @include('messages')
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
@@ -157,26 +160,117 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-12">
+                                <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="image">Product Image</label>
+                                        <label for="image">Main Product Image</label>
 
                                         @if(!empty($product_entries->image))
                                             <div class="input-group align-items-end">
-                                                <img src="{{ asset('storage/'. $product_entries->image) }}" alt="Product Image" width="150">
+                                                <img src="{{ asset('storage/'. $product_entries->image) }}" alt="Product Image" width="200" height="150">
                                                 <div class="ml-2">
-                                                    <a href="{{ route('product.removeimg', $product_entries->id) }}" class="btn btn-danger" onclick="return confirm('Are you sure you want remove this Product image ?');">Remove</a>
+                                                    <a href="{{ route('product.removeimg', $product_entries->id) }}" class="btn btn-danger" onclick="return confirm('Are you sure you want remove this Main Product image ?');">Remove</a>
                                                 </div>
                                             </div>
                                         @else
                                             <input type="file" class="form-control @error('image') is-invalid @enderror" name="image" id="image" accept="image/png, image/jpeg, image/jpg" />
-                                        @endif
 
-                                        @error('image')
+                                            @error('image')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+
+                                            <div class="row">
+                                                <div class="col-md-2 d-inline-flex">
+                                                    <img src="{{ asset('default-img/product-img.png') }}" alt="Product Image" width="100">
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="sku">SKU<span class="text-danger"> *</span></label>
+
+                                        <input type="text" class="form-control @error('sku') is-invalid @enderror" placeholder="{{ __('Enter Your Product Name') }}" id="sku" name="sku" value="{{ old('sku', $product_entries->sku) }}">
+
+                                        @error('sku')
                                             <span class="invalid-feedback" role="alert">
                                                 <strong>{{ $message }}</strong>
                                             </span>
                                         @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label for="multi_image">Side Product Images</label>
+
+                                        <div class="row">
+                                            <div class="col-md-{{ $product_entries->multi_image != null ? '9' : '12' }}">
+                                                <input type="file" class="form-control @if($errors->has('multi_image.*')) is-invalid @enderror" name="multi_image[]" id="multi_image" accept="image/png, image/jpeg, image/jpg" multiple/>
+                                            </div>
+
+                                            @if($product_entries->multi_image != null)
+                                                <div class="col-md-3">
+                                                    <a href="javascript:void(0);" id="multi-img-btn" class="btn btn-danger">Multiple Delete</a>
+                                                    <a href="javascript:void(0);" id="cancle-multi-img-btn" class="btn btn-primary" onclick="location.reload();">Cancle Multiple Delete</a>
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                        @if ($errors->has('multi_image.*'))
+                                            <span class="invalid-feedback" role="alert">
+                                                <strong>{{ $errors->first('multi_image.*') }}</strong>
+                                            </span>
+                                        @endif
+
+                                        <div id="flash-message"></div>
+
+                                        <div class="row multi-img">
+                                            @if($product_entries->multi_image != null)
+                                                @php
+                                                    $multi_image = explode(', ', $product_entries->multi_image);
+                                                @endphp
+
+                                                <style>
+                                                    [class*=icheck-]>input:first-child+label::before {
+                                                        border: 3px solid #000000;
+                                                    }
+                                                    [class*=icheck-]>input:first-child:not(:checked):not(:disabled):hover+label::before {
+                                                        border-width: 3px;
+                                                    }
+                                                    .multi-img .icheck-primary.position-absolute.m-0, #cancle-multi-img-btn {
+                                                        display: none;
+                                                    }
+                                                </style>
+
+                                                @foreach($multi_image as $image)
+
+                                                    <div class="col-md-2 d-inline-flex mt-3">
+                                                        <img src="{{ asset('storage/upload/multiple_images/'. $image) }}" alt="Product Image" width="150" height="150">
+                                                        <a href="{{ route('product.removeimg', ['id' => $product_entries->id, 'img' => $image ?? '']) }}" class="btn btn-sm btn-danger position-absolute" onclick="return confirm('Are you sure you want delete this Product Image ?');"><i class="fa fa-trash"></i></a>
+
+                                                        <div class="icheck-primary position-absolute m-0">
+                                                            <input type="checkbox" class="imgCheckbox" id="{{ $image }}" value="{{ $image }}">
+                                                            <label for="{{ $image }}">
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                @endforeach
+                                            @else
+                                                <div class="col-md-2 d-inline-flex mt-3">
+                                                    <img src="{{ asset('default-img/product-img.png') }}" alt="Product Image" width="100">
+                                                </div>
+                                            @endif
+
+                                            <div class="col-md-2 mt-3 d-none" id="delete-multi-img-btn">
+                                                <a href="javascript:void(0);" class="btn btn-danger">Delete Images</a>
+                                            </div>
+
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -207,6 +301,74 @@
 <!-- Page specific script -->
 <script>
     $(document).ready(function() {
+        var flashMessage = localStorage.getItem('flash-message');
+        if (flashMessage) {
+            var data = JSON.parse(flashMessage);
+
+            var messageType = data.type;
+            var message = data.message;
+            var alertClass = messageType === 'success' ? 'alert-success' : 'alert-warning';
+
+            var html = '<div class="alert '+alertClass+' alert-dismissible fade show mt-3 mb-0" role="alert">'+message+'<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>';
+
+            $('#flash-message').html(html);
+            setTimeout(function() {
+                $('.'+alertClass).fadeOut('slow');
+            }, 2500);
+            localStorage.removeItem('flash-message');
+        }
+
+        $("#multi-img-btn").click(function(){
+            $("#multi-img-btn").css("display", "none");
+            $("#cancle-multi-img-btn").css("display", "inline-block");
+            $("#delete-multi-img-btn").removeClass('d-none').addClass('d-block');
+            $(".multi-img .icheck-primary.position-absolute.m-0").css("display", "block");
+            $(".row.multi-img").css("align-items", "end");
+            $(".multi-img .btn.position-absolute").css("display", "none");
+            $(".multi-img img").css("opacity", "0.5");
+        });
+
+        $("#delete-multi-img-btn a").click(function(){
+            var imgNames = [];
+            var id = "{{ $product_entries->id }}";
+
+            $(".imgCheckbox:checked").each(function(){
+                var imgname = $(this).val();
+                imgNames.push(imgname);
+            });
+
+            if (imgNames.length === 0) {
+                alert("Please select at least one image to delete.");
+                return;
+            }
+            if (!confirm('Are you sure you want delete this Side Product Images?')) {
+                return;
+            }
+
+            $.ajax({
+                url: "{{ route('product.multiremoveimg') }}",
+                type: 'GET',
+                data: { 
+                    _token: "{{ csrf_token() }}",
+                    imgNames: imgNames,
+                    id: id
+                },
+                success: function(response) {
+                    localStorage.setItem('flash-message', JSON.stringify({ type: 'success', message: response.status }));
+                    window.location.reload();
+                },
+                error: function(xhr) {
+                    if (xhr.status === 403) {
+                        let response = xhr.responseJSON;
+                        if (response.error) {
+                            localStorage.setItem('flash-message', JSON.stringify({ type: 'error', message: response.error }));
+                            window.location.reload();
+                        }
+                    }
+                }
+            });
+        });
+
         function loadChildCategories(category_id, selectedChildCategoryId = null) {
 
             $.ajax({

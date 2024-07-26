@@ -97,15 +97,45 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Product Image</label>
+                                    <label>Main Product Image</label>
 
                                     <div class="input-group">
                                         @if($product_entries->image != null)
-                                            <img src="{{ asset('storage/'. $product_entries->image) }}" alt="Product Image" width="150">
+                                            <img src="{{ asset('storage/'. $product_entries->image) }}" alt="Product Image" width="200" height="150">
                                         @else
-                                            <input type="text" class="form-control" value="No Product Image Uploaded" readonly>
+                                            <img src="{{ asset('default-img/product-img.png') }}" alt="Product Image" width="100">
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>SKU</label>
+
+                                    <input type="text" class="form-control" value="{{ $product_entries->sku }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label>Side Product Images</label>
+
+                                    <div class="input-group" style="gap: 10px;">
+                                        @if($product_entries->multi_image != null)
+                                            @php
+                                                $multi_image = explode(', ', $product_entries->multi_image);
+                                            @endphp
+
+                                            @foreach($multi_image as $image)
+                                            
+                                                <img src="{{ asset('storage/upload/multiple_images/'. $image) }}" alt="Product Image" width="150" height="150">
+
+                                            @endforeach
+                                        @else
+                                            <img src="{{ asset('default-img/product-img.png') }}" alt="Product Image" width="100">
                                         @endif
                                     </div>
                                 </div>

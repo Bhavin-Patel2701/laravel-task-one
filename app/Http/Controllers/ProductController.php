@@ -11,6 +11,7 @@ use App\Imports\ProductImport;
 use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Support\Facades\Redirect;
 
 class ProductController extends Controller
 {
@@ -21,21 +22,18 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $allproduct_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title')
+        $allproduct_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title', 'users.firstname as product_username', 'users.role as product_username_role')
+        ->leftJoin('users','users.id','=','product.user_id')
         ->leftJoin('category','category.id','=','product.category_id')
         ->leftJoin('category as child_category','child_category.id','=','product.child_category_id');
 
         if (Auth::user()->role === "vendor") {
-            $allproduct_entries = $allproduct_entries->where('product.status', 'active')
-            ->orWhere(function($query) {
-                $query->where('product.status', 'inactive')
-                      ->where('product.user_id', Auth::user()->id);
-            })->get();
+            $allproduct_entries = $allproduct_entries->where('product.user_id', Auth::user()->id)->get();
         }
         else {
             $allproduct_entries = $allproduct_entries->get();
         }
-        
+
         /* $all = Product::with('category')->get();
         foreach ($all as $a){
             dd($a->category->title);
@@ -98,19 +96,14 @@ class ProductController extends Controller
         $rules = [
             'category_id' => 'required|exists:category,id',
             'title' => 'required|string|min:2|max:255',
-            'quantity' => 'required|numeric|between:1,100',
-            'price' => 'required|numeric|between:10,100000'
+            'sku' => 'required|string|min:8|max:20',
+            'quantity' => 'required|numeric|between:0,100',
+            'price' => 'required|numeric|between:1,100000'
         ];
 
         if (Auth::user()->role === "admin") {
             $rules['status'] = 'required|in:active,inactive';  // Validation rule for enum
         }
-
-        $messages = [
-            'description.min' => 'The description must be at least 2 characters.',
-            'image.mimes' => 'The image must be a file of type: JPEG, PNG or JPG.',
-            'image.max' => 'The image may not be greater than 1 MB.',
-        ];
 
         if ($request->filled('description')) {
             $rules['description'] = 'required|string|min:2';
@@ -123,6 +116,18 @@ class ProductController extends Controller
         if ($request->file('image')) {
             $rules['image'] = 'required|image|mimes:jpeg,png,jpg|max:1024';
         }
+        
+        if ($request->file('multi_image')) {
+            $rules['multi_image.*'] = 'required|image|mimes:jpeg,png,jpg|max:1024';
+        }
+
+        $messages = [
+            'description.min' => 'The description must be at least 2 characters.',
+            'image.mimes' => 'The image must be a file of type: JPEG, PNG or JPG.',
+            'image.max' => 'The image may not be greater than 1 MB.',
+            'multi_image.*.mimes' => 'Each image must be a file of type: JPEG, PNG, or JPG.',
+            'multi_image.*.max' => 'Each image may not be greater than 1 MB.'
+        ];
 
         $data = $request->validate($rules, $messages);
 
@@ -136,6 +141,18 @@ class ProductController extends Controller
 
             $img_pathName = "upload/image/".$img_fileName;
             $data['image'] = $img_pathName;
+        }
+
+        if (!empty($data['multi_image'])) {
+            $multi_img_fileName = [];
+            $i = 1;
+            foreach ($request->file('multi_image') as $multi_image)
+            {
+                $setmulti_img_fileName = time().$i++."_img.".$multi_image->getClientOriginalExtension();
+                $multi_image->storeAs('public/upload/multiple_images', $setmulti_img_fileName);
+                $multi_img_fileName[] = $setmulti_img_fileName;
+            }
+            $data['multi_image'] = implode(', ', $multi_img_fileName);
         }
 
         $data['user_id'] = Auth::user()->id;
@@ -154,7 +171,8 @@ class ProductController extends Controller
      */
     public function show($id)
     {
-        $product_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title')
+        $product_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title', 'users.firstname as product_username', 'users.role as product_username_role')
+        ->leftJoin('users','users.id','=','product.user_id')
         ->leftJoin('category','category.id','=','product.category_id')
         ->leftJoin('category as child_category','child_category.id','=','product.child_category_id')
         ->where('product.id',$id)->first();
@@ -178,7 +196,8 @@ class ProductController extends Controller
     {
         $active_category = Category::where('status', 'active')->get();
 
-        $product_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title')
+        $product_entries = Product::select('product.*','category.title as category_title','child_category.title as child_category_title', 'users.firstname as product_username', 'users.role as product_username_role')
+        ->leftJoin('users','users.id','=','product.user_id')
         ->leftJoin('category','category.id','=','product.category_id')
         ->leftJoin('category as child_category','child_category.id','=','product.child_category_id')
         ->where('product.id',$id)->first();
@@ -204,8 +223,8 @@ class ProductController extends Controller
         $rules = [
             'category_id' => 'required',
             'title' => 'required|string|min:2|max:255',
-            'status' => 'required|in:active,inactive',
-            'quantity' => 'required|numeric|between:1,100',
+            'sku' => 'required|string|min:8|max:20',
+            'quantity' => 'required|numeric|between:0,100',
             'price' => 'required|numeric|between:10,100000'
         ];
 
@@ -213,7 +232,13 @@ class ProductController extends Controller
             'description.min' => 'The description must be at least 2 characters.',
             'image.mimes' => 'The image must be a file of type: JPEG, PNG or JPG.',
             'image.max' => 'The image may not be greater than 1 MB.',
+            'multi_image.*.mimes' => 'Each image must be a file of type: JPEG, PNG, or JPG.',
+            'multi_image.*.max' => 'Each image may not be greater than 1 MB.'
         ];
+
+        if (Auth::user()->role === "admin") {
+            $rules['status'] = 'required|in:active,inactive';
+        }
 
         if ($request->filled('description')) {
             $rules['description'] = 'required|string|min:2';
@@ -227,6 +252,10 @@ class ProductController extends Controller
             $rules['image'] = 'required|image|mimes:jpeg,png,jpg|max:1024';
         }
 
+        if ($request->file('multi_image')) {
+            $rules['multi_image.*'] = 'required|image|mimes:jpeg,png,jpg|max:1024';
+        }
+
         $data = $request->validate($rules, $messages);
 
         if (isset($data['image'])) {
@@ -237,13 +266,34 @@ class ProductController extends Controller
             $data['image'] = $img_pathName;
         }
 
+        if (!empty($data['multi_image'])) {
+            $multi_img_fileName = [];
+            $i = 1;
+            foreach ($request->file('multi_image') as $multi_image)
+            {
+                $setmulti_img_fileName = time().$i++."_img.".$multi_image->getClientOriginalExtension();
+                $multi_image->storeAs('public/upload/multiple_images', $setmulti_img_fileName);
+                $multi_img_fileName[] = $setmulti_img_fileName;
+            }
+            $new_imgname = implode(', ', $multi_img_fileName);
+            $singale_product_info = Product::findOrFail($id);
+
+            if ($singale_product_info->multi_image === null) {
+                $data['multi_image'] = $new_imgname;
+            } else {
+                $data['multi_image'] = $singale_product_info->multi_image.", ".$new_imgname;
+            }
+        }
+
         $singale_info = Product::findOrFail($id);
 
         $singale_info->category_id = $data['category_id'];
         $singale_info->title = $data['title'];
-        $singale_info->status = $data['status'];
+        $singale_info->sku = $data['sku'];
         $singale_info->quantity = $data['quantity'];
         $singale_info->price = $data['price'];
+
+        $singale_info->status = Auth::user()->role !== "admin" ? 'inactive' : $data['status'];
 
         if (!empty($data['description'])) {
             $singale_info->description = $data['description'];
@@ -255,6 +305,10 @@ class ProductController extends Controller
 
         if (!empty($data['image'])) {
             $singale_info->image = $data['image'];
+        }
+
+        if (!empty($data['multi_image'])) {
+            $singale_info->multi_image = $data['multi_image'];
         }
 
         $singale_info->save();
@@ -269,23 +323,76 @@ class ProductController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function removeimg($id)
+    public function removeimg($id, $img_name = null)
     {
         $singale_info = Product::findOrFail($id);
 
         if ($singale_info->user_id === Auth::user()->id && Auth::user()->role === "vendor" || Auth::user()->role === "admin") {
-            if (Storage::disk('public')->exists($singale_info->image))
+            if ($img_name === null) 
             {
-                Storage::disk('public')->delete($singale_info->image);
-                $singale_info->image = null;
-                $singale_info->save();
+                if (Storage::disk('public')->exists($singale_info->image))
+                {
+                    Storage::disk('public')->delete($singale_info->image);
+                    $singale_info->image = null;
+                    $singale_info->status = Auth::user()->role === "vendor" ? 'inactive' : $singale_info->status;
+                    $singale_info->save();
+                }
+                Session::flash('success', 'Product image delete successfully.');
+                return redirect()->route('product.list');
             }
-            Session::flash('success', 'Product image delete successfully.');
-            return redirect()->route('product.list');
+            else
+            {
+                if (Storage::disk('public')->exists("upload/multiple_images/".$img_name))
+                {
+                    Storage::disk('public')->delete("upload/multiple_images/".$img_name);
+                    $multi_image_name = explode(', ', $singale_info->multi_image);
+                    $multi_img_fileName = [];
+                    
+                    foreach ($multi_image_name as $multi_img_name) {
+                        if ($multi_img_name !== $img_name) {
+                            $multi_img_fileName[] = $multi_img_name;
+                        }
+                    }
+                    $multi_imgname = implode(', ', $multi_img_fileName);
+                    $singale_info->multi_image = $multi_imgname;
+                    $singale_info->status = Auth::user()->role === "vendor" ? 'inactive' : $singale_info->status;
+                    $singale_info->save();
+                }
+                Session::flash('success', 'Side Product Image delete successfully.');
+                return redirect()->route('product.edit', $id);
+            }
         }
         else {
             Session::flash('error', 'You are not authorized to remove this Product image.');
             return redirect()->route('product.list');
+        }
+    }
+
+    public function multiremoveimg(Request $request)
+    {
+        $singale_info = Product::findOrFail($request->input('id'));
+        if ($request->has('imgNames')) {
+
+            $remove_multi_image = $request->input('imgNames');
+            foreach ($remove_multi_image as $remove_image) {
+
+                if (Storage::disk('public')->exists("upload/multiple_images/".$remove_image)) {
+                    Storage::disk('public')->delete("upload/multiple_images/".$remove_image);
+                    $multi_image_name = explode(', ', $singale_info->multi_image);
+
+                    $multi_imgname = array_filter($multi_image_name, function ($multi_img_name) use ($remove_image) {
+                        return $multi_img_name !== $remove_image;
+                    });
+
+                    $singale_info->multi_image = empty($multi_imgname) ? null : implode(', ', $multi_imgname);
+                    $singale_info->status = Auth::user()->role === "vendor" ? 'inactive' : $singale_info->status;
+                    $singale_info->save();
+                }
+            }
+            return response()->json(['status' => 'Side Product Images delete successfully.']);
+        }
+        else {
+            return response()->json(['error' => 'Please select images to delete!'], 403);
         }
     }
 
@@ -335,21 +442,42 @@ class ProductController extends Controller
 
         $import = new ProductImport($user_id, $user_role);
 
-        Excel::import($import, $data);
+        try {
+            Excel::import($import, $data);
 
-        $skippedRowNumbers = $import->getSkippedRowNumbers();
-        if (!empty($skippedRowNumbers)) {
-            Session::flash('error', 'The following rows were skipped because they did not meet the necessary criteria: '.implode(', ', $skippedRowNumbers).'. Please review and try again.');
+            $skippedRowNumbers = $import->getSkippedRowNumbers();
+            if (!empty($skippedRowNumbers)) {
+                Session::flash('error', 'The following rows were skipped because they did not meet the necessary criteria: '.implode(', ', $skippedRowNumbers).'. Please review and try again.');
+            }
+
+            $getDuplicateRowNumbers = $import->getDuplicateRowNumbers();
+            if (!empty($getDuplicateRowNumbers)) {
+                Session::flash('alert', 'The following rows contain duplicate entries and were not imported: '.implode(', ', $getDuplicateRowNumbers).'.');
+            }
+
+            Session::flash('success', 'All Products are import successfully.');
+            // return redirect()->route('product.list');
         }
+        catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
 
-        $getDuplicateRowNumbers = $import->getDuplicateRowNumbers();
-        if (!empty($getDuplicateRowNumbers)) {
-            Session::flash('alert', 'The following rows contain duplicate entries and were not imported: '.implode(', ', $getDuplicateRowNumbers).'.');
+            dd($failures);
+            foreach ($failures as $failure) {
+
+                $failure->row(); // row that went wrong
+                $failure->attribute(); // either heading key (if using heading row concern) or column index
+                $failure->errors(); // Actual error messages from Laravel validator
+                $failure->values(); // The values of the row that has failed.
+            }
+
+            // Handle validation failures
+            // return back()->withFailures($failures);
+            // return back()->withErrors(['import_errors' => $failures])->withInput();
+            // return Redirect::back()->withErrors($failures)->withInput();
+            return redirect()->back()
+            ->withErrors(['import_errors' => $failures])
+            ->withInput();
         }
-
-        Session::flash('success', 'All Products are import successfully.');
-
-        return redirect()->route('product.list');
     }
     
     /**

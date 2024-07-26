@@ -77,7 +77,8 @@ Route::group(['middleware' => ['auth', 'adminorvendor']], function () {
         Route::post('update/{id}', [ProductController::class, 'update'])->name('product.update');
         Route::get('destroy/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
 
-        Route::get('removeimg/{id}', [ProductController::class, 'removeimg'])->name('product.removeimg');
+        Route::get('removeimg/{id}/{img?}', [ProductController::class, 'removeimg'])->name('product.removeimg');
+        Route::get('multiremoveimg', [ProductController::class, 'multiremoveimg'])->name('product.multiremoveimg');
         Route::get('status/{id}', [ProductController::class, 'status'])->name('product.status');
         Route::get('childcategory', [ProductController::class, 'childcategory'])->name('product.childcategory');
         Route::get('export', [ProductController::class, 'export'])->name('product.export');
